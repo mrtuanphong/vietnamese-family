@@ -10,6 +10,7 @@ export interface Clan {
 }
 
 export type Gender = "male" | "female" | "unknown";
+export type UserRole = "member" | "admin" | "super_admin";
 
 export interface Person {
   id: string;
@@ -28,6 +29,8 @@ export interface Person {
   generation?: number | null;
   childOrder?: number | null;
   isClanMember?: boolean;
+  role?: UserRole;
+  password?: string | null;
   createdAt?: string;
 }
 

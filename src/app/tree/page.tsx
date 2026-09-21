@@ -81,7 +81,7 @@ function TreePageContent() {
   const [outlineSearch, setOutlineSearch] = useState("");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { canEdit } = useAccess();
+  const { canEdit, canEditPerson } = useAccess();
 
   const mutate = async (loadingMsg: string, successMsg: string, fn: () => Promise<void>) => {
     setIsMutating(true);
@@ -408,7 +408,7 @@ function TreePageContent() {
             onRemoveSpouse={handleRemoveSpouse}
             onSetRoot={handleSetRoot}
             isMutating={isMutating}
-            canEdit={canEdit}
+            canEdit={canEditPerson(selected?.id)}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
           />

@@ -468,7 +468,7 @@ export default function ListPageContent({
   const handleRemoveSpouse = (id: string) =>
     mutate(() => marriagesApi.delete(id));
 
-  const { canEdit } = useAccess();
+  const { canEdit, canEditPerson, canDeletePerson } = useAccess();
   const hasGenerations = persons.some((p) => p.generation != null);
   const generations = Array.from(
     new Set(persons.map((p) => p.generation).filter((g): g is number => g != null))
@@ -700,7 +700,7 @@ export default function ListPageContent({
                           </TooltipTrigger>
                           <TooltipContent>Người này là điểm khởi đầu trong cây</TooltipContent>
                         </Tooltip>
-                        {canEdit && (
+                        {canEditPerson(p.id) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" disabled={deletingId === p.id}>
@@ -713,7 +713,7 @@ export default function ListPageContent({
                               <DropdownMenuItem onClick={() => setEditTarget(p)} className="flex items-center gap-2">
                                 <Pencil size={15} /> Sửa
                               </DropdownMenuItem>
-                              {p.id !== superAdminId && (
+                              {canDeletePerson(p.id) && p.id !== superAdminId && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
@@ -893,7 +893,7 @@ export default function ListPageContent({
             rootPersonId={null}
             onSetRoot={(id) => id && router.push(`/tree?selected=${id}&root=${id}`)}
             isMutating={isMutating}
-            canEdit={canEdit}
+            canEdit={canEditPerson(selectedPerson?.id)}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
           />

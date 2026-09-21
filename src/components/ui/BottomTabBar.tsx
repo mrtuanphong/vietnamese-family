@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Users, Network, Settings } from "lucide-react";
+import { useAccess } from "@/lib/AccessContext";
 
 const LIST_ROUTES = ["/members", "/events", "/families"];
 
@@ -30,16 +31,20 @@ const tabs = [
     label: "Dòng họ",
     icon: Settings,
     match: (p: string) => p.startsWith("/clan"),
+    requiresClanView: true,
   },
 ];
 
 export default function BottomTabBar() {
   const pathname = usePathname();
+  const { canViewClan } = useAccess();
+
+  const visibleTabs = tabs.filter((t) => !t.requiresClanView || canViewClan);
 
   return (
     <nav className="sm:hidden bg-white border-t safe-bottom shrink-0">
       <div className="flex">
-        {tabs.map(({ href, label, icon: Icon, match }) => {
+        {visibleTabs.map(({ href, label, icon: Icon, match }) => {
           const active = match(pathname);
           return (
             <Link

@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAccess } from "@/lib/AccessContext";
 import type { Person, Relationship, Marriage } from "@/types";
 
 const NEW_PERSON_SENTINEL = "__new__";
@@ -85,6 +86,7 @@ export default function PersonSidebar({
   collapsed: collapsedProp,
   onToggleCollapse,
 }: PersonSidebarProps) {
+  const { canDeletePerson } = useAccess();
   const isSuperAdmin = person.id === superAdminId;
   const personMap = new Map(allPersons.map((p) => [p.id, p]));
 
@@ -348,7 +350,7 @@ export default function PersonSidebar({
             <Button variant="outline" size="sm" className="flex-1" onClick={() => onEdit(person)} disabled={isMutating}>
               Sửa
             </Button>
-            {!isSuperAdmin && (
+            {!isSuperAdmin && canDeletePerson(person.id) && (
               <Button variant="destructive" size="sm" onClick={() => onDelete(person.id)} disabled={isMutating}>
                 Xoá
               </Button>

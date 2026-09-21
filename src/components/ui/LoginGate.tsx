@@ -3,124 +3,131 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Lock, Phone, ShieldCheck } from "lucide-react";
+import { UserRole } from "@/types";
 
 interface LoginGateProps {
   clanName: string;
-  isPublic: boolean;
-  onGranted: (name: string, canEdit: boolean) => void;
+  onGranted: (authData: {
+    role: UserRole;
+    name: string;
+    personId: string;
+    phone: string;
+    editablePersonIds: string[];
+    canEditClan: boolean;
+    canEditTree: boolean;
+  }) => void;
 }
 
-export default function LoginGate({ clanName, isPublic, onGranted }: LoginGateProps) {
+export default function LoginGate({ clanName, onGranted }: LoginGateProps) {
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showAdminForm, setShowAdminForm] = useState(false);
 
-  const submit = async (phone: string, pwd: string) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!account.trim() || !password) {
+      setError("Vui lòng nhập đầy đủ Số điện thoại và Mật khẩu.");
+      return;
+    }
+
     setError("");
     setLoading(true);
+
     try {
       const res = await fetch("/api/access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password: pwd }),
+        body: JSON.stringify({ phone: account.trim(), password }),
       });
+
       const data = await res.json();
-      if (data.granted) {
-        sessionStorage.setItem("giapha_access", "granted");
-        sessionStorage.setItem("giapha_name", data.name ?? "");
-        sessionStorage.setItem("giapha_can_edit", data.canEdit ? "1" : "0");
-        onGranted(data.name ?? "", !!data.canEdit);
+
+      if (res.ok && data.granted) {
+        onGranted({
+          role: data.role,
+          name: data.name ?? "",
+          personId: data.personId ?? "",
+          phone: data.phone ?? account.trim(),
+          editablePersonIds: data.editablePersonIds ?? [],
+          canEditClan: !!data.canEditClan,
+          canEditTree: !!data.canEditTree,
+        });
       } else {
-        setError("Bạn không có quyền truy cập!");
+        setError(data.error || "Số điện thoại hoặc mật khẩu không chính xác.");
       }
     } catch {
-      setError("Lỗi kết nối, thử lại.");
+      setError("Lỗi kết nối máy chủ, vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGuestLogin = () => submit("", "");
-
-  const handleAdminSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    submit(account, password);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 mb-3 border border-brand-100 shadow-xs">
+            <ShieldCheck size={26} />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900">{clanName}</h1>
-          <p className="text-sm text-gray-500 mt-1">Vui lòng xác thực để tiếp tục</p>
+          <p className="text-sm text-gray-500 mt-1">Đăng nhập tài khoản để vào hệ thống</p>
         </div>
 
-        <div className="bg-white border rounded-2xl p-6 flex flex-col gap-4">
-          {isPublic && !showAdminForm && (
-            <>
-              <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-sm text-blue-700">
-                Đây là trang dòng họ công khai. Bấm <span className="font-semibold">Đăng nhập</span> để vào xem.
-              </div>
-
-              {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
-
-              <Button onClick={handleGuestLogin} disabled={loading} className="w-full">
-                {loading ? "Đang kiểm tra..." : "Đăng nhập"}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => setShowAdminForm(true)}
-                className="text-xs text-gray-400 hover:text-gray-600 text-center transition-colors"
-              >
-                Đăng nhập với tài khoản quản lý
-              </button>
-            </>
-          )}
-
-          {(!isPublic || showAdminForm) && (
-            <form onSubmit={handleAdminSubmit} className="flex flex-col gap-4">
-              {showAdminForm && (
-                <button
-                  type="button"
-                  onClick={() => { setShowAdminForm(false); setError(""); }}
-                  className="text-xs text-gray-400 hover:text-gray-600 text-left transition-colors"
-                >
-                  ← Quay lại
-                </button>
-              )}
-
-              <div>
-                <label className="font-medium block mb-1.5">Tài khoản</label>
+        <div className="bg-white border rounded-2xl p-6 shadow-xs flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                Số điện thoại
+              </label>
+              <div className="relative">
                 <Input
                   type="text"
                   value={account}
-                  onChange={(e) => { setAccount(e.target.value); setError(""); }}
-                  placeholder="Nhập tài khoản"
+                  onChange={(e) => {
+                    setAccount(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Nhập số điện thoại"
                   autoFocus
                   required
+                  className="pr-10"
                 />
+                <Phone size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
+            </div>
 
-              <div>
-                <label className="font-medium block mb-1.5">Mật khẩu</label>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                Mật khẩu
+              </label>
+              <div className="relative">
                 <Input
                   type="password"
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
                   placeholder="Nhập mật khẩu"
+                  required
+                  className="pr-10"
                 />
+                <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
+            </div>
 
-              {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 font-medium leading-relaxed">
+                {error}
+              </div>
+            )}
 
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Đang kiểm tra..." : "Đăng nhập"}
-              </Button>
-            </form>
-          )}
+            <Button type="submit" disabled={loading} className="w-full mt-1">
+              {loading ? "Đang xác thực..." : "Đăng nhập"}
+            </Button>
+          </form>
         </div>
       </div>
     </div>

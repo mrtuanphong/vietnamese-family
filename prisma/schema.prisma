@@ -36,7 +36,9 @@ model Person {
   generation     Int?
   childOrder     Int?
   isClanMember   Boolean  @default(true)
-  createdAt          DateTime @default(now())
+  role           String   @default("member")
+  password       String?
+  createdAt      DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relationships where this person is parent

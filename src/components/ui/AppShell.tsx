@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu, Home, Users, Network, Settings, Info,
   Plus, UserPlus, CalendarDays,
-  CircleUser, UserCog, Building2,
-  LogOut, Lock,
+  CircleUser, LogOut,
 } from "lucide-react";
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import { clanApi, personsApi } from "@/lib/api";
-import { AccessContext } from "@/lib/AccessContext";
+import { AccessContext, AccessContextValue } from "@/lib/AccessContext";
 import PersonDialog from "@/components/person/PersonDialog";
 import LoginGate from "@/components/ui/LoginGate";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserRole } from "@/types";
 
 const LIST_ROUTES = ["/members", "/events", "/families"];
 
@@ -28,8 +28,8 @@ const navItems = [
   { href: "/",        label: "Trang chủ",          active: (p: string) => p === "/",                                        icon: Home },
   { href: "/events",  label: "Danh sách",           active: (p: string) => LIST_ROUTES.some((r) => p.startsWith(r)),        icon: Users },
   { href: "/tree",    label: "Cây gia phả",         active: (p: string) => p.startsWith("/tree"),                           icon: Network },
-  { href: "/clan",    label: "Thông tin dòng họ",   active: (p: string) => p.startsWith("/clan"),                           icon: Settings },
-  { href: "/about",   label: "Về phần mềm",         active: (p: string) => p.startsWith("/about"),                          icon: Info },
+  { href: "/clan",    label: "Thông tin dòng họ",   active: (p: string) => p.startsWith("/clan"),                           icon: Settings, requiresClanView: true },
+  { href: "/about",   label: "Về phần mềm",         active: (p: string) => p.startsWith("/about"),                          icon: Info,     requiresAboutView: true },
 ];
 
 const HEADER_H = 56;
@@ -42,10 +42,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [clanName, setClanName] = useState("Gia Đình Việt");
   const [showAddPerson, setShowAddPerson] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
   const [accessGranted, setAccessGranted] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
-  const [canEdit, setCanEdit] = useState(false);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+  const [editablePersonIds, setEditablePersonIds] = useState<string[]>([]);
   const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
@@ -58,28 +60,82 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Read sessionStorage synchronously before any async calls to avoid login flash
+    // Read sessionStorage synchronously before any async calls
     const granted = sessionStorage.getItem("giapha_access") === "granted";
     setAccessGranted(granted);
     if (granted) {
       setLoggedInName(sessionStorage.getItem("giapha_name") ?? "");
-      setCanEdit(sessionStorage.getItem("giapha_can_edit") === "1");
+      setRole((sessionStorage.getItem("giapha_role") as UserRole) ?? "member");
+      setPersonId(sessionStorage.getItem("giapha_person_id") ?? null);
+      setPhone(sessionStorage.getItem("giapha_phone") ?? null);
+      try {
+        const storedIds = sessionStorage.getItem("giapha_editable_ids");
+        setEditablePersonIds(storedIds ? JSON.parse(storedIds) : []);
+      } catch {
+        setEditablePersonIds([]);
+      }
     }
     setMounted(true);
 
     clanApi.get().then((c) => {
       if (c?.name) setClanName(c.name);
     });
+
     fetch("/api/access")
       .then((r) => r.json())
       .then((d) => {
-        setIsPublic(d.public ?? true);
         if (typeof d.isDev === "boolean") {
           setIsDev(d.isDev);
         }
       })
       .catch(() => {});
   }, []);
+
+  const canEditClan = role === "super_admin";
+  const canEditTree = role === "admin" || role === "super_admin";
+  const canEdit = canEditTree;
+  const canViewClan = role === "admin" || role === "super_admin";
+  const canViewAbout = role === "admin" || role === "super_admin";
+
+  const canEditPerson = useCallback(
+    (targetPersonId?: string | null): boolean => {
+      if (!targetPersonId) return false;
+      if (role === "super_admin" || role === "admin") return true;
+      if (role === "member") {
+        return (
+          editablePersonIds.includes(targetPersonId) ||
+          editablePersonIds.includes("*") ||
+          targetPersonId === personId
+        );
+      }
+      return false;
+    },
+    [role, editablePersonIds, personId]
+  );
+
+  const canDeletePerson = useCallback(
+    (targetPersonId?: string | null): boolean => {
+      if (!targetPersonId) return false;
+      // Không cho phép bất kỳ ai (member, admin) tự xóa tài khoản của chính mình
+      if (targetPersonId === personId) return false;
+      // Role member không có quyền xóa bất kỳ ai
+      if (role === "member") return false;
+      // Role admin hoặc super_admin có quyền xóa thành viên khác
+      if (role === "super_admin" || role === "admin") return true;
+      return false;
+    },
+    [role, personId]
+  );
+
+  // Route protection: Members cannot view /clan and /about
+  useEffect(() => {
+    if (!mounted || !accessGranted) return;
+    if (role === "member") {
+      if (pathname.startsWith("/clan") || pathname.startsWith("/about")) {
+        router.replace("/");
+      }
+    }
+  }, [mounted, accessGranted, role, pathname, router]);
 
   const desktopOpen = mounted && open;
 
@@ -101,22 +157,106 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     document.title = fullTitle;
   }, [rawPageTitle, isDev]);
 
+  const accessContextValue: AccessContextValue = useMemo(
+    () => ({
+      canEdit,
+      role,
+      personId,
+      name: loggedInName,
+      phone,
+      editablePersonIds,
+      canEditClan,
+      canEditTree,
+      canViewClan,
+      canViewAbout,
+      canEditPerson,
+      canDeletePerson,
+    }),
+    [
+      canEdit,
+      role,
+      personId,
+      loggedInName,
+      phone,
+      editablePersonIds,
+      canEditClan,
+      canEditTree,
+      canViewClan,
+      canViewAbout,
+      canEditPerson,
+      canDeletePerson,
+    ]
+  );
+
   if (mounted && !accessGranted) {
     return (
       <LoginGate
         clanName={clanName}
-        isPublic={isPublic}
-        onGranted={(name, edit) => {
+        onGranted={(authData) => {
+          sessionStorage.setItem("giapha_access", "granted");
+          sessionStorage.setItem("giapha_name", authData.name);
+          sessionStorage.setItem("giapha_role", authData.role);
+          sessionStorage.setItem("giapha_person_id", authData.personId);
+          sessionStorage.setItem("giapha_phone", authData.phone);
+          sessionStorage.setItem(
+            "giapha_editable_ids",
+            JSON.stringify(authData.editablePersonIds)
+          );
           setAccessGranted(true);
-          setLoggedInName(name);
-          setCanEdit(edit);
+          setLoggedInName(authData.name);
+          setRole(authData.role);
+          setPersonId(authData.personId);
+          setPhone(authData.phone);
+          setEditablePersonIds(authData.editablePersonIds);
         }}
       />
     );
   }
 
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.requiresClanView && !canViewClan) return false;
+    if (item.requiresAboutView && !canViewAbout) return false;
+    return true;
+  });
+
+  const getRoleBadge = () => {
+    switch (role) {
+      case "super_admin":
+        return (
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-foreground/20 text-primary-foreground shrink-0">
+            Super Admin
+          </span>
+        );
+      case "admin":
+        return (
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground/90 shrink-0">
+            Quản trị viên
+          </span>
+        );
+      case "member":
+      default:
+        return (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-foreground/10 text-primary-foreground/80 shrink-0">
+            Thành viên
+          </span>
+        );
+    }
+  };
+
+  const getRoleDisplayTitle = () => {
+    switch (role) {
+      case "super_admin":
+        return "Super Admin";
+      case "admin":
+        return "Quản trị viên";
+      case "member":
+      default:
+        return "Thành viên dòng họ";
+    }
+  };
+
   return (
-    <>
+    <AccessContext.Provider value={accessContextValue}>
       {/* Mobile overlay */}
       {open && mounted && (
         <div
@@ -135,12 +275,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-primary-foreground font-semibold text-base truncate flex-1 min-w-0">
             {clanName}
           </span>
-          {!isPublic && <Lock size={13} className="text-primary-foreground/60 shrink-0" />}
         </div>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-2 border-r">
-          {navItems.map(({ href, label, active: isActive, icon: Icon }) => {
+          {visibleNavItems.map(({ href, label, active: isActive, icon: Icon }) => {
             const active = isActive(pathname);
             return (
               <Link
@@ -187,17 +326,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Right actions */}
           <div className="flex items-center gap-1">
-            {canEdit ? (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground/80 shrink-0">
-                Super Admin
-              </span>
-            ) : (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-foreground/10 text-primary-foreground/60 shrink-0">
-                Tài khoản khách
-              </span>
-            )}
+            {getRoleBadge()}
 
-            {canEdit && (
+            {canEditTree && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -231,38 +362,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label="Thiết lập"
+                  aria-label="Tài khoản"
                   className="rounded-full text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=open]:bg-primary-foreground/10 data-[state=open]:text-primary-foreground"
                 >
                   <CircleUser size={20} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuContent align="end" className="w-64">
                 {loggedInName && (
-                  <DropdownMenuItem disabled className="gap-3 px-4 py-3">
-                    <CircleUser size={18} className="text-gray-500" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-medium text-gray-900 truncate">{loggedInName}</span>
-                      <span className="text-xs text-gray-600">Đã đăng nhập</span>
-                    </div>
-                  </DropdownMenuItem>
+                  <div className="px-4 py-3 border-b">
+                    <p className="font-semibold text-gray-900 truncate">{loggedInName}</p>
+                    <p className="text-xs text-brand-600 font-medium mt-0.5">{getRoleDisplayTitle()}</p>
+                    {phone && <p className="text-xs text-gray-400 mt-0.5">{phone}</p>}
+                  </div>
                 )}
-                {loggedInName && (
-                  <DropdownMenuItem
-                    className="gap-3 px-4 py-3 cursor-pointer text-red-600 focus:text-red-600"
-                    onSelect={() => {
-                      sessionStorage.removeItem("giapha_access");
-                      sessionStorage.removeItem("giapha_name");
-                      sessionStorage.removeItem("giapha_can_edit");
-                      setAccessGranted(false);
-                      setLoggedInName("");
-                      setCanEdit(false);
-                    }}
-                  >
-                    <LogOut size={18} />
-                    Thoát
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  className="gap-3 px-4 py-3 cursor-pointer text-red-600 focus:text-red-600"
+                  onSelect={() => {
+                    sessionStorage.removeItem("giapha_access");
+                    sessionStorage.removeItem("giapha_name");
+                    sessionStorage.removeItem("giapha_role");
+                    sessionStorage.removeItem("giapha_person_id");
+                    sessionStorage.removeItem("giapha_phone");
+                    sessionStorage.removeItem("giapha_editable_ids");
+                    setAccessGranted(false);
+                    setLoggedInName("");
+                    setRole(null);
+                    setPersonId(null);
+                    setPhone(null);
+                    setEditablePersonIds([]);
+                  }}
+                >
+                  <LogOut size={18} />
+                  Đăng xuất
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -270,11 +403,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <AccessContext.Provider value={{ canEdit }}>
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {children}
-          </div>
-        </AccessContext.Provider>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {children}
+        </div>
         <BottomTabBar />
       </div>
 
@@ -288,6 +419,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           router.refresh();
         }}
       />
-    </>
+    </AccessContext.Provider>
   );
 }

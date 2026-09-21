@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLink } from "lucide-react";
+import { useAccess } from "@/lib/AccessContext";
 
 type BadgeType = "new" | "improved" | "fixed";
 
@@ -27,6 +29,22 @@ interface SystemInfo {
 }
 
 const whatsNew: WhatsNewEntry[] = [
+  {
+    date: "21/09/2026",
+    items: [
+      { label: "Bắt buộc xác thực tài khoản qua Số điện thoại và Mật khẩu, loại bỏ truy cập tự do", badge: "new" },
+      { label: "Mã hóa bảo mật mật khẩu người dùng với giải thuật scrypt và muối ngẫu nhiên (salt:hash)", badge: "new" },
+      { label: "Tự động chuẩn hóa các đầu số điện thoại Việt Nam (098..., +8498..., 8498...)", badge: "improved" },
+      { label: "Hệ thống phân quyền 3 vai trò: Thành viên (Member), Quản trị viên (Admin), Super Admin", badge: "new" },
+      { label: "Thành viên: cho phép tự chỉnh sửa thông tin của chính mình, vợ/chồng và các con", badge: "new" },
+      { label: "Thành viên: ẩn hoàn toàn trang Thông tin dòng họ và Về phần mềm trên menu điều hướng", badge: "improved" },
+      { label: "Quản trị viên: toàn quyền quản lý cây gia phả, chỉ xem Thông tin dòng họ", badge: "improved" },
+      { label: "Super Admin: toàn quyền quản trị tối cao (cây gia phả, thông tin dòng họ, cấu hình đời tham chiếu)", badge: "improved" },
+      { label: "Form thêm/sửa thành viên: bổ sung ô chọn Vai trò và tự động điền sẵn mật khẩu mặc định 12345678", badge: "new" },
+      { label: "Chặn tuyệt đối không cho phép thành viên hoặc quản trị viên tự xoá tài khoản của chính mình", badge: "improved" },
+      { label: "Tự động nhận diện chữ hoa/thường (Admin/admin) và khoảng trắng khi nhập mật khẩu", badge: "improved" },
+    ],
+  },
   {
     date: "28/06/2026",
     items: [
@@ -152,6 +170,14 @@ const releases = [
 export default function AboutPage() {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [loadingSystem, setLoadingSystem] = useState(true);
+  const { canViewAbout, role } = useAccess();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role === "member" || canViewAbout === false) {
+      router.replace("/");
+    }
+  }, [role, canViewAbout, router]);
 
   useEffect(() => {
     fetch("/api/system")
@@ -160,6 +186,10 @@ export default function AboutPage() {
       .catch((err) => console.error("Lỗi tải thông tin hệ thống:", err))
       .finally(() => setLoadingSystem(false));
   }, []);
+
+  if (role === "member" || canViewAbout === false) {
+    return null;
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">

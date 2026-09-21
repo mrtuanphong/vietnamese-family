@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { isDevEnvironment } from "@/lib/env";
+import { normalizePhone, verifyPassword } from "@/lib/auth";
+import { UserRole } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const clan = await prisma.clan.findFirst();
     return NextResponse.json({
-      public: clan?.enabled ?? true,
+      public: false,
       isDev: isDevEnvironment(),
     });
   } catch (e) {
@@ -17,27 +18,106 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const { phone, password } = await req.json();
-    const clan = await prisma.clan.findFirst();
 
-    // Guest access — public clan, no credentials needed
-    if (clan?.enabled && !phone) {
-      return NextResponse.json({ granted: true, name: "Tài khoản khách", canEdit: false });
+    if (!phone || !password) {
+      return NextResponse.json(
+        { granted: false, error: "Vui lòng nhập đầy đủ Số điện thoại và Mật khẩu." },
+        { status: 400 }
+      );
     }
 
-    if (!phone) return NextResponse.json({ granted: false });
+    const normalizedInputPhone = normalizePhone(String(phone));
+    if (!normalizedInputPhone) {
+      return NextResponse.json(
+        { granted: false, error: "Số điện thoại không hợp lệ." },
+        { status: 400 }
+      );
+    }
 
-    if (!clan?.superAdminId) return NextResponse.json({ granted: false });
+    // Fetch all persons with phone number to find match via normalized phone
+    const persons = await prisma.person.findMany({
+      where: {
+        phone: { not: null },
+      },
+    });
 
-    const superAdmin = await prisma.person.findUnique({ where: { id: clan.superAdminId } });
-    const normalize = (p: string) => p.replace(/\s|-/g, "");
-    const granted =
-      !!superAdmin?.phone && normalize(superAdmin.phone) === normalize(phone);
+    const person = persons.find(
+      (p) => p.phone && normalizePhone(p.phone) === normalizedInputPhone
+    );
 
-    const name = granted
-      ? [superAdmin!.lastName, superAdmin!.middleName, superAdmin!.firstName].filter(Boolean).join(" ")
-      : null;
+    if (!person || !person.password) {
+      return NextResponse.json(
+        { granted: false, error: "Số điện thoại hoặc mật khẩu không chính xác." },
+        { status: 401 }
+      );
+    }
 
-    return NextResponse.json({ granted, name, canEdit: granted });
+    const inputPwd = String(password).trim();
+    let isValidPassword = verifyPassword(inputPwd, person.password);
+
+    // Support auto-capitalization (e.g. on mobile/Mac where Admin is typed instead of admin)
+    if (!isValidPassword && inputPwd.toLowerCase() === "admin") {
+      isValidPassword = verifyPassword("admin", person.password);
+    }
+
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { granted: false, error: "Số điện thoại hoặc mật khẩu không chính xác." },
+        { status: 401 }
+      );
+    }
+
+    const clan = await prisma.clan.findFirst({ orderBy: { createdAt: "asc" } });
+    const isSuperAdmin = clan?.superAdminId === person.id || person.role === "super_admin";
+    const role: UserRole = isSuperAdmin
+      ? "super_admin"
+      : (person.role as UserRole) || "member";
+
+    let editablePersonIds: string[] = [];
+
+    if (role === "super_admin" || role === "admin") {
+      editablePersonIds = ["*"];
+    } else {
+      // Role is "member": can edit self, spouse(s), and children
+      const [marriages, childRelationships] = await Promise.all([
+        prisma.marriage.findMany({
+          where: {
+            OR: [{ spouse1Id: person.id }, { spouse2Id: person.id }],
+          },
+          select: { spouse1Id: true, spouse2Id: true },
+        }),
+        prisma.relationship.findMany({
+          where: { parentId: person.id },
+          select: { childId: true },
+        }),
+      ]);
+
+      const spouseIds = marriages.map((m) =>
+        m.spouse1Id === person.id ? m.spouse2Id : m.spouse1Id
+      );
+      const childIds = childRelationships.map((r) => r.childId);
+
+      editablePersonIds = Array.from(
+        new Set([person.id, ...spouseIds, ...childIds])
+      );
+    }
+
+    const name = [person.lastName, person.middleName, person.firstName]
+      .filter(Boolean)
+      .join(" ");
+
+    return NextResponse.json({
+      granted: true,
+      role,
+      name,
+      personId: person.id,
+      phone: person.phone,
+      editablePersonIds,
+      canEditClan: role === "super_admin",
+      canEditTree: role === "admin" || role === "super_admin",
+      canViewClan: role === "admin" || role === "super_admin",
+      canViewAbout: role === "admin" || role === "super_admin",
+    });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
