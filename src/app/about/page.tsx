@@ -151,10 +151,9 @@ const releases = [
 
 export default function AboutPage() {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const [loadingSystem, setLoadingSystem] = useState(false);
+  const [loadingSystem, setLoadingSystem] = useState(true);
 
   useEffect(() => {
-    setLoadingSystem(true);
     fetch("/api/system")
       .then((res) => res.json())
       .then((data) => setSystemInfo(data))
