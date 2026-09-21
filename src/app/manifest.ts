@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Gia Phả Việt Nam",
-    short_name: "Gia Phả",
+    name: "Gia Đình Việt",
+    short_name: "Gia Đình Việt",
     description: "Ứng dụng quản lý gia phả dòng họ",
     start_url: "/",
     display: "standalone",

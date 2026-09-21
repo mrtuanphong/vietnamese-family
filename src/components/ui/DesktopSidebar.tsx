@@ -51,7 +51,7 @@ const navItems = [
 
 export default function DesktopSidebar() {
   const pathname = usePathname();
-  const [clanName, setClanName] = useState("Gia Phả");
+  const [clanName, setClanName] = useState("Gia Đình Việt");
 
   useEffect(() => {
     clanApi.get().then((c) => {

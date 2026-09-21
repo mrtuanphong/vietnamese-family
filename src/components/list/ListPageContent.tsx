@@ -353,7 +353,7 @@ export default function ListPageContent({
   const [persons, setPersons] = useState<Person[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [marriages, setMarriages] = useState<Marriage[]>([]);
-  const [clanName, setClanName] = useState<string>("Gia Phả Việt Nam");
+  const [clanName, setClanName] = useState<string>("Gia Đình Việt");
   const [superAdminId, setSuperAdminId] = useState<string | null>(null);
   const [clanLastNameSetting, setClanLastNameSetting] = useState<string | null>(null);
   const [search, setSearch] = useState("");

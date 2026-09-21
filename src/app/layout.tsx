@@ -19,12 +19,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gia Phả Việt Nam",
+  title: "Gia Đình Việt",
   description: "Ứng dụng quản lý gia phả dòng họ",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Gia Phả",
+    title: "Gia Đình Việt",
   },
   other: {
     "mobile-web-app-capable": "yes",

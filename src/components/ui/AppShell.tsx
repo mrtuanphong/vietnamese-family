@@ -40,7 +40,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [clanName, setClanName] = useState("Gia Phả");
+  const [clanName, setClanName] = useState("Gia Đình Việt");
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [accessGranted, setAccessGranted] = useState(false);
