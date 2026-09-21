@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+import { getTitlePrefix } from "@/lib/env";
+
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const geistSans = Geist({
@@ -18,13 +20,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const titlePrefix = getTitlePrefix();
+
 export const metadata: Metadata = {
-  title: "Gia Đình Việt",
+  title: {
+    template: `${titlePrefix}%s · Gia Đình Việt`,
+    default: `${titlePrefix}Gia Đình Việt`,
+  },
   description: "Ứng dụng quản lý gia phả dòng họ",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Gia Đình Việt",
+    title: `${titlePrefix}Gia Đình Việt`,
   },
   other: {
     "mobile-web-app-capable": "yes",

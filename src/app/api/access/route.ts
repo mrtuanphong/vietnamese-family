@@ -1,13 +1,16 @@
-export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
+import { isDevEnvironment } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
     const clan = await prisma.clan.findFirst();
-    return NextResponse.json({ public: clan?.enabled ?? true });
+    return NextResponse.json({
+      public: clan?.enabled ?? true,
+      isDev: isDevEnvironment(),
+    });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e), isDev: isDevEnvironment() }, { status: 500 });
   }
 }
 

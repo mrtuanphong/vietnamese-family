@@ -46,9 +46,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [accessGranted, setAccessGranted] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
   const [canEdit, setCanEdit] = useState(false);
+  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
     setOpen(window.innerWidth >= 768);
+
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1" || host.includes("dev")) {
+        setIsDev(true);
+      }
+    }
 
     // Read sessionStorage synchronously before any async calls to avoid login flash
     const granted = sessionStorage.getItem("giapha_access") === "granted";
@@ -62,14 +70,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     clanApi.get().then((c) => {
       if (c?.name) setClanName(c.name);
     });
-    fetch("/api/access").then((r) => r.json()).then((d) => {
-      setIsPublic(d.public ?? true);
-    });
+    fetch("/api/access")
+      .then((r) => r.json())
+      .then((d) => {
+        setIsPublic(d.public ?? true);
+        if (typeof d.isDev === "boolean") {
+          setIsDev(d.isDev);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const desktopOpen = mounted && open;
 
-  const pageTitle = (() => {
+  const rawPageTitle = (() => {
     if (pathname === "/") return "Trang chủ";
     if (LIST_ROUTES.some((r) => pathname.startsWith(r))) return "Danh sách";
     if (pathname.startsWith("/tree")) return "Cây gia phả";
@@ -77,6 +91,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/about")) return "Về phần mềm";
     return "";
   })();
+
+  const pageTitle = rawPageTitle ? (isDev ? `[Dev] ${rawPageTitle}` : rawPageTitle) : "";
+
+  useEffect(() => {
+    const fullTitle = rawPageTitle
+      ? `${isDev ? "[Dev] " : ""}${rawPageTitle} · Gia Đình Việt`
+      : `${isDev ? "[Dev] " : ""}Gia Đình Việt`;
+    document.title = fullTitle;
+  }, [rawPageTitle, isDev]);
 
   if (mounted && !accessGranted) {
     return (
