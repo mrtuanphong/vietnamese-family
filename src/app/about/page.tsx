@@ -390,7 +390,7 @@ export default function AboutPage() {
                       </a>
 
                       <a
-                        href="https://vietnamese-family-tree.vercel.app"
+                        href="https://vietnamese-family-dev.vercel.app"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-2.5 rounded-lg bg-amber-50/50 border border-amber-100 hover:bg-amber-50 transition-colors group"
@@ -400,7 +400,7 @@ export default function AboutPage() {
                             Website Staging / Dev
                           </span>
                           <span className="text-[0.7rem] text-amber-700">
-                            vietnamese-family-tree.vercel.app
+                            vietnamese-family-dev.vercel.app
                           </span>
                         </div>
                         <ExternalLink size={14} className="text-amber-600 shrink-0" />
