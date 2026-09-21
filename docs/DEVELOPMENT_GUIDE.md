@@ -38,7 +38,7 @@ Dự án tách biệt hoàn toàn giữa môi trường phát triển thử nghi
 Hệ thống dùng tính năng **Branching** của Neon Serverless Postgres:
 - **Nhánh `production`:** Chứa dữ liệu gia phả thực tế của dòng họ.
 - **Nhánh `dev`:** Bản phân nhánh độc lập được nhân bản từ bản chính. Mọi thao tác thêm/sửa/xoá người trong quá trình code và test chỉ tác động vào nhánh này, **không ảnh hưởng** đến dữ liệu thật trên `do.lifeofphong.com`.
-- Mỗi nhánh CSDL có một mã máy chủ riêng (**Endpoint ID**, ví dụ `ep-wispy-pond-...`). Bạn có thể vào tab **"Về phần mềm > Hệ thống & CSDL"** trên web để kiểm tra Endpoint ID đang kết nối.
+- Mỗi nhánh CSDL có một mã máy chủ riêng (**Endpoint ID**, ví dụ `ep-xyz-123456...`). Bạn có thể vào tab **"Về phần mềm > Hệ thống & CSDL"** trên web để kiểm tra Endpoint ID đang kết nối.
 
 ---
 
@@ -83,7 +83,7 @@ Chọn 1 trong 2 cách sau:
   npx vercel link
   # Khi được hỏi:
   # - Set up “vietnamese-family”? -> chọn Y
-  # - Which scope? -> chọn tài khoản của bạn (Phong Do)
+  # - Which scope? -> chọn tài khoản của bạn
   # - Link to existing project? -> chọn Y
   # - What’s the name of your existing project? -> nhập vietnamese-family-dev
 
