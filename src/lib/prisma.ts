@@ -3,7 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-function createClient() {
+export function createClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString) {
     try {
@@ -26,6 +26,27 @@ function createClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient();
+function getActiveClient(): PrismaClient {
+  const existing = globalForPrisma.prisma as any;
+  // If no instance or instance lacks models added recently (fund, user, transaction), recreate
+  if (!existing || !existing.fund || !existing.transaction || !existing.user) {
+    console.log("🔄 [Prisma] Initializing/Refreshing PrismaClient with models (fund, user, transaction)...");
+    globalForPrisma.prisma = createClient();
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getActiveClient() as any;
+    const value = client[prop];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = getActiveClient();
+}

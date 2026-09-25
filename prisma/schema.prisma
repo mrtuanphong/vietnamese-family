@@ -6,25 +6,83 @@ datasource db {
   provider = "postgresql"
 }
 
+model Workspace {
+  id                   String            @id @default(cuid())
+  name                 String
+  type                 String            @default("CLAN") // "CLAN" | "CLUB" | "GROUP" | "COMMUNITY"
+  address              String?
+  description          String?
+  enabled              Boolean           @default(true)
+  enabledModules       String?
+  clanLastName         String?
+  superAdminId         String?
+  superAdminGeneration Int?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  members              WorkspaceMember[]
+  persons              Person[]
+  funds                Fund[]
+}
+
+model WorkspaceMember {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         String    @default("member") // "super_admin" | "admin" | "member"
+  adminModules String?   @default("[]")     // JSON array: ["community", "finance", ...]
+  personId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([workspaceId, userId])
+}
+
 model Clan {
-  id             String   @id @default(cuid())
-  name           String
-  address        String?
-  description    String?
-  enabled        Boolean  @default(true)
+  id                   String   @id @default(cuid())
+  name                 String
+  address              String?
+  description          String?
+  enabled              Boolean  @default(true)
   superAdminId         String?
   superAdminGeneration Int?
   clanLastName         String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  enabledModules       String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model User {
+  id           String            @id @default(cuid())
+  phone        String            @unique
+  email        String?           @unique
+  password     String
+  fullName     String
+  avatarUrl    String?
+  status       String            @default("active") // "active" | "suspended"
+  role         String            @default("member") // "member" | "admin" | "super_admin"
+  adminModules String?           @default("[]")     // JSON array: ["community", "finance", ...]
+
+  personId     String?           @unique
+  person       Person?           @relation("PersonUser", fields: [personId], references: [id], onDelete: SetNull)
+
+  memberships  WorkspaceMember[]
+
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 }
 
 model Person {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  middleName  String?
-  gender      String   // "male" | "female" | "unknown"
+  id             String          @id @default(cuid())
+  workspaceId    String?
+  workspace      Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  firstName      String
+  lastName       String
+  middleName     String?
+  gender         String          // "male" | "female" | "unknown"
   birthDate      String?
   birthPlace     String?
   deathDateLunar String?
@@ -35,20 +93,23 @@ model Person {
   bio            String?
   generation     Int?
   childOrder     Int?
-  isClanMember   Boolean  @default(true)
-  role           String   @default("member")
+  isClanMember   Boolean         @default(true)
+  role           String?         @default("member")
   password       String?
-  createdAt      DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  adminModules   String?         @default("[]")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  userAccount    User?           @relation("PersonUser")
 
   // Relationships where this person is parent
-  asParent    Relationship[] @relation("Parent")
+  asParent       Relationship[]  @relation("Parent")
   // Relationships where this person is child
-  asChild     Relationship[] @relation("Child")
+  asChild        Relationship[]  @relation("Child")
   // Marriages where this person is spouse1
-  asSpouse1   Marriage[]     @relation("Spouse1")
+  asSpouse1      Marriage[]      @relation("Spouse1")
   // Marriages where this person is spouse2
-  asSpouse2   Marriage[]     @relation("Spouse2")
+  asSpouse2      Marriage[]      @relation("Spouse2")
 }
 
 model Relationship {
@@ -71,4 +132,44 @@ model Marriage {
   spouse2   Person  @relation("Spouse2", fields: [spouse2Id], references: [id])
 
   @@unique([spouse1Id, spouse2Id])
+}
+
+model Fund {
+  id             String        @id @default(cuid())
+  workspaceId    String?
+  workspace      Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name           String
+  description    String?
+  cycleType      String        @default("1_YEAR")
+  cycleName      String        @default("Hàng năm (1 năm / lần)")
+  amountPerCycle Int           @default(500000)
+  currentCycle   String        @default("Năm 2026")
+  balance        Int           @default(0)
+  bankName       String?       @default("MB")
+  bankAccount    String?       @default("0988889999")
+  accountHolder  String?       @default("THU QUY DONG HO")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  transactions   Transaction[]
+}
+
+model Transaction {
+  id                 String   @id @default(cuid())
+  fundId             String
+  fund               Fund     @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  type               String   // "INCOME" | "EXPENSE"
+  category           String   // "CYCLE_FEE" | "DONATION" | "EVENT_EXPENSE" | "VISIT_GIFT" | "SCHOLARSHIP" | "RENOVATION"
+  categoryName       String
+  title              String
+  amount             Int
+  actorName          String
+  actorPhone         String?
+  actorId            String?
+  receiptUrl         String?
+  note               String?
+  isDonationSeparate Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }

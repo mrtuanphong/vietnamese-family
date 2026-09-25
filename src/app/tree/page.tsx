@@ -2,59 +2,14 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import ReactFlow, {
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  type ReactFlowInstance,
-} from "reactflow";
-import "reactflow/dist/style.css";
-import Link from "next/link";
-import { X, Loader2, Network, List, Info, ChevronRight } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X, Loader2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { personsApi, relationshipsApi, marriagesApi } from "@/lib/api";
-import { buildTreeGraph } from "@/lib/buildTree";
-import PersonNode from "@/components/tree/PersonNode";
-import MarriageHubNode from "@/components/tree/MarriageHubNode";
+import { personsApi, relationshipsApi, marriagesApi, clanApi } from "@/lib/api";
 import PersonSidebar from "@/components/tree/PersonSidebar";
 import TreeOutline from "@/components/tree/TreeOutline";
 import PersonDialog from "@/components/person/PersonDialog";
-import { clanApi } from "@/lib/api";
 import { useAccess } from "@/lib/AccessContext";
-import type { Person, Relationship, Marriage, FamilyTreeData } from "@/types";
-
-function getSubtreeData(
-  rootId: string,
-  persons: Person[],
-  relationships: Relationship[],
-  marriages: Marriage[],
-): FamilyTreeData {
-  const included = new Set<string>([rootId]);
-  const queue = [rootId];
-  while (queue.length) {
-    const curr = queue.shift()!;
-    for (const rel of relationships) {
-      if (rel.parentId === curr && !included.has(rel.childId)) {
-        included.add(rel.childId);
-        queue.push(rel.childId);
-      }
-    }
-  }
-  for (const m of marriages) {
-    if (included.has(m.spouse1Id)) included.add(m.spouse2Id);
-    if (included.has(m.spouse2Id)) included.add(m.spouse1Id);
-  }
-  return {
-    persons: persons.filter((p) => included.has(p.id)),
-    relationships: relationships.filter((r) => included.has(r.parentId) && included.has(r.childId)),
-    marriages: marriages.filter((m) => included.has(m.spouse1Id) && included.has(m.spouse2Id)),
-  };
-}
-
-const nodeTypes = { personNode: PersonNode, marriageHubNode: MarriageHubNode };
+import type { Person, Relationship, Marriage } from "@/types";
 
 type PendingRelation = { type: "spouse" | "child" | "parent"; anchorId: string };
 
@@ -66,22 +21,19 @@ function TreePageContent() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [marriages, setMarriages] = useState<Marriage[]>([]);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selected, setSelected] = useState<Person | null>(null);
   const [editTarget, setEditTarget] = useState<Person | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [superAdminId, setSuperAdminId] = useState<string | null>(null);
-  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const [pendingRelation, setPendingRelation] = useState<PendingRelation | null>(null);
   const [rootPersonId, setRootPersonId] = useState<string | null>(null);
   const rootPersonIdRef = useRef<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
-  const [viewMode, setViewMode] = useState<"graph" | "outline">("outline");
   const [outlineSearch, setOutlineSearch] = useState("");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { canEdit, canEditPerson } = useAccess();
+  const [loading, setLoading] = useState(true);
+  const { canEditPerson } = useAccess();
 
   const mutate = async (loadingMsg: string, successMsg: string, fn: () => Promise<void>) => {
     setIsMutating(true);
@@ -108,77 +60,31 @@ function TreePageContent() {
     return { p, r, m };
   };
 
-  const rebuild = (data: FamilyTreeData, selectPerson?: Person | null, adminId?: string | null) => {
-    const effectiveAdminId = adminId !== undefined ? adminId : superAdminId;
-    const { nodes: n, edges: e } = buildTreeGraph(data);
-    const selectedId = selectPerson?.id ?? null;
-    const withHandlers = n.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        isSelected: node.id === selectedId,
-        isSuperAdmin: node.id === effectiveAdminId,
-        onSelect: (person: Person) => {
-            setHighlightId(person.id);
-            if (window.innerWidth >= 640) setSelected(person);
-          },
-        onAddChild: (personId: string) => setPendingRelation({ type: "child", anchorId: personId }),
-      },
-    }));
-    setNodes(withHandlers);
-    setEdges(e);
-    if (selectPerson) {
-      const fresh = data.persons.find((x) => x.id === selectPerson.id);
-      if (window.innerWidth >= 640) setSelected(fresh ?? null);
-      setHighlightId(fresh?.id ?? null);
-    }
-  };
-
-  const [initialLoaded, setInitialLoaded] = useState(false);
-
   useEffect(() => {
-    Promise.all([load(), clanApi.get()]).then(([{ p, r, m }, clan]) => {
+    Promise.all([load(), clanApi.get()]).then(([{ p }, clan]) => {
       const adminId = clan?.superAdminId ?? null;
       if (adminId) setSuperAdminId(adminId);
       const preselect = urlSelectedId ? p.find((x) => x.id === urlSelectedId) ?? null : null;
+      if (preselect) {
+        setSelected(preselect);
+        setHighlightId(preselect.id);
+      }
       if (urlRootId) {
         rootPersonIdRef.current = urlRootId;
         setRootPersonId(urlRootId);
-        const subtree = getSubtreeData(urlRootId, p, r, m);
-        rebuild(subtree, preselect, adminId);
-      } else {
-        rebuild({ persons: p, relationships: r, marriages: m }, preselect, adminId);
       }
-      setInitialLoaded(true);
+    }).finally(() => {
+      setLoading(false);
     });
-  }, []);
-
-  useEffect(() => {
-    if (!initialLoaded || !rfInstance || !urlSelectedId) return;
-    setTimeout(() => {
-      rfInstance.fitView({ nodes: [{ id: urlSelectedId }], duration: 500, padding: 0.5 });
-    }, 100);
-  }, [initialLoaded, rfInstance, urlSelectedId]);
-
-  useEffect(() => {
-    const activeId = highlightId ?? selected?.id ?? null;
-    setNodes((prev) =>
-      prev.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          isSelected: node.id === activeId,
-          isSuperAdmin: node.id === superAdminId,
-        },
-      }))
-    );
-  }, [selected, highlightId, superAdminId]);
+  }, [urlSelectedId, urlRootId]);
 
   const refresh = async (keepSelected?: Person | null) => {
-    const { p, r, m } = await load();
-    const rootId = rootPersonIdRef.current;
-    const data = rootId ? getSubtreeData(rootId, p, r, m) : { persons: p, relationships: r, marriages: m };
-    rebuild(data, keepSelected);
+    const { p } = await load();
+    if (keepSelected) {
+      const fresh = p.find((x) => x.id === keepSelected.id);
+      setSelected(fresh ?? null);
+      setHighlightId(fresh?.id ?? null);
+    }
   };
 
   const handleSetRoot = (id: string | null) => {
@@ -188,14 +94,8 @@ function TreePageContent() {
     if (window.innerWidth >= 640) setSelected(rootPerson);
     else setSelected(null);
     setHighlightId(id);
-    const data = id
-      ? getSubtreeData(id, persons, relationships, marriages)
-      : { persons, relationships, marriages };
-    rebuild(data, null);
-    setTimeout(() => rfInstance?.fitView({ duration: 500, padding: 0.15 }), 50);
   };
 
-  // Plain "add person" from header button
   const handleAddPerson = async (data: Omit<Person, "id">) =>
     mutate("Đang thêm người...", "Đã thêm người", async () => {
       await personsApi.create(data);
@@ -292,91 +192,64 @@ function TreePageContent() {
     ? (persons.find((p) => p.id === pendingRelation.anchorId)?.gender === "male" ? "female" : "male")
     : undefined;
 
+  const rootPerson = rootPersonId ? persons.find((p) => p.id === rootPersonId) : null;
+  const rootPersonName = rootPerson
+    ? [rootPerson.lastName || "—", rootPerson.middleName, rootPerson.firstName].filter(Boolean).join(" ")
+    : "";
+
+  if (loading) {
+    return (
+      <div className="flex-1 bg-white flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Đang tải cây phả hệ...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 bg-white overflow-hidden">
       <div className="flex flex-col flex-1 overflow-hidden">
-      <header className="bg-white border-b px-4 sm:px-6 py-4 flex items-center gap-3 shrink-0">
-        <Link href="/events" className="hidden sm:block md:hidden text-sm text-gray-500 hover:text-gray-700">← Danh sách</Link>
-        {isMutating && <Loader2 size={16} className="animate-spin text-gray-400" />}
-        {rootPersonId && (() => {
-          const rootPerson = persons.find((p) => p.id === rootPersonId);
-          const name = rootPerson ? [rootPerson.lastName || "—", rootPerson.middleName, rootPerson.firstName].filter(Boolean).join(" ") : "";
-          return (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-50 border border-brand-200 text-sm text-brand-700">
-              <span>Cây từ: <strong>{name}</strong></span>
-              <button
-                onClick={() => handleSetRoot(null)}
-                className="rounded-full hover:bg-brand-100 p-0.5 transition-colors"
-                aria-label="Xem toàn bộ"
-              >
-                <X size={12} />
-              </button>
+        {/* Banner khi đang lọc xem theo một nhánh cây cụ thể */}
+        {rootPersonId && (
+          <div className="bg-teal-50 border-b border-teal-200 px-4 py-2 flex items-center justify-between text-xs text-teal-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <span>Đang xem cây phả hệ từ nhánh: <strong>{rootPersonName}</strong></span>
+              {isMutating && <Loader2 size={13} className="animate-spin text-teal-600" />}
             </div>
-          );
-        })()}
-        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "graph" | "outline")}>
-          <TabsList>
-            <TabsTrigger value="outline" className="flex items-center gap-1.5">
-              <List size={14} />
-              Đơn giản
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="flex items-center gap-1.5">
-              <Network size={14} />
-              Sơ đồ
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {viewMode === "outline" ? (
-            <TreeOutline
-              persons={persons}
-              relationships={relationships}
-              marriages={marriages}
-              rootPersonId={rootPersonId}
-              selectedId={highlightId ?? selected?.id ?? null}
-              superAdminId={superAdminId}
-              search={outlineSearch}
-              onSearchChange={setOutlineSearch}
-              onSelect={(person) => {
-                setHighlightId(person.id);
-                if (window.innerWidth >= 640) setSelected(person);
-              }}
-              onSetRoot={handleSetRoot}
-              initialExpandSelected={!!urlSelectedId}
-            />
-          ) : (
-          <div className="flex-1 flex items-center justify-center text-center px-6">
-            <div className="flex flex-col items-center gap-3 text-gray-400">
-              <Network size={40} className="text-gray-200" />
-              <p className="font-medium text-gray-500">Tính năng đang phát triển</p>
-              <p className="text-sm">Sơ đồ cây gia phả sẽ sớm ra mắt.</p>
-            </div>
+            <button
+              onClick={() => handleSetRoot(null)}
+              className="text-xs font-semibold text-teal-700 hover:text-teal-900 underline flex items-center gap-1 cursor-pointer"
+            >
+              <X size={12} />
+              <span>Xem toàn bộ dòng họ</span>
+            </button>
           </div>
-          /* OLD GRAPH CODE — hidden until ready
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            nodeTypes={nodeTypes}
-            fitView={!urlSelectedId}
-            onInit={setRfInstance}
-            nodesDraggable={true}
-            nodesConnectable={false}
-          >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
-          */
-          )}
-        </div>
-      </div>{/* end flex-1 overflow-hidden row */}
+        )}
 
-      </div>{/* end inner flex-col */}
+        {/* Cây gia phả dạng danh sách phân cấp trực quan */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TreeOutline
+            persons={persons}
+            relationships={relationships}
+            marriages={marriages}
+            rootPersonId={rootPersonId}
+            selectedId={highlightId ?? selected?.id ?? null}
+            superAdminId={superAdminId}
+            search={outlineSearch}
+            onSearchChange={setOutlineSearch}
+            onSelect={(person) => {
+              setHighlightId(person.id);
+              if (window.innerWidth >= 640) setSelected(person);
+            }}
+            onSetRoot={handleSetRoot}
+            initialExpandSelected={!!urlSelectedId}
+          />
+        </div>
+      </div>
 
       {selected && (
         <div
@@ -385,6 +258,7 @@ function TreePageContent() {
         />
       )}
 
+      {/* Sidebar thông tin thành viên chi tiết */}
       <div className="hidden sm:flex shrink-0">
         {selected ? (
           <PersonSidebar
@@ -429,8 +303,7 @@ function TreePageContent() {
             {!sidebarCollapsed && (
               <div className="flex-1 flex items-center justify-center px-6">
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <Info size={20} className="text-gray-300" />
-                  <p className="text-sm text-gray-400 leading-relaxed">Bấm chọn một người trong danh sách để xem thông tin cá nhân.</p>
+                  <p className="text-sm text-gray-400 leading-relaxed">Bấm chọn một người trong danh sách để xem thông tin chi tiết.</p>
                 </div>
               </div>
             )}

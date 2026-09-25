@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Person, Gender, UserRole } from "@/types";
+import type { Person, Gender } from "@/types";
 import { useAccess } from "@/lib/AccessContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,8 +76,6 @@ function makeEmpty(defaultLastName?: string): PersonFormData {
     childOrder: null,
     isClanMember: true,
     deathDateLunar: null,
-    role: "member",
-    password: "12345678",
   };
 }
 
@@ -86,8 +84,6 @@ export default function PersonForm({ initial, defaultLastName, clanLastName, pla
   const [form, setForm] = useState<PersonFormData>({
     ...makeEmpty(defaultLastName),
     ...initial,
-    role: initial?.role || "member",
-    password: initial?.password || "12345678",
   });
   const [birthParts, setBirthParts] = useState<DateParts>(() => parseDateParts(initial?.birthDate));
   const [deathParts, setDeathParts] = useState<DateParts>(() =>
@@ -240,43 +236,6 @@ export default function PersonForm({ initial, defaultLastName, clanLastName, pla
             <Input value={form.phone ?? ""} onChange={set("phone")} type="tel" placeholder="0912 345 678" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
-            <div>
-              <label className="font-medium block mb-1">Vai trò (Phân quyền)</label>
-              <Select
-                value={form.role ?? "member"}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, role: v as UserRole }))}
-                disabled={form.role === "super_admin"}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Thành viên</SelectItem>
-                  <SelectItem value="admin">Quản trị viên</SelectItem>
-                  {form.role === "super_admin" && (
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="text-[0.7rem] text-muted-foreground mt-1">
-                {form.role === "super_admin" ? "Tài khoản Super Admin tối cao" : "Quyền hạn truy cập của thành viên"}
-              </p>
-            </div>
-
-            <div>
-              <label className="font-medium block mb-1">Mật khẩu</label>
-              <Input
-                type="text"
-                value={form.password ?? "12345678"}
-                onChange={set("password")}
-                placeholder="12345678"
-              />
-              <p className="text-[0.7rem] text-muted-foreground mt-1">
-                Tự động điền sẵn 12345678 (có thể sửa)
-              </p>
-            </div>
-          </div>
 
           <div className="pt-2 border-t">
             <label className="font-medium block mb-1">Tiểu sử</label>

@@ -1,13 +1,56 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { ensureUserSchema } from "@/lib/ensureUserSchema";
 
 export async function GET() {
   try {
-    const persons = await prisma.person.findMany({ orderBy: { createdAt: "asc" } });
-    const sanitized = persons.map(({ password: _, ...p }) => p);
-    return NextResponse.json(sanitized);
+    await ensureUserSchema();
+    const persons = await prisma.person.findMany({
+      orderBy: { createdAt: "asc" },
+      include: {
+        userAccount: {
+          select: {
+            id: true,
+            phone: true,
+            role: true,
+            status: true,
+            adminModules: true,
+          },
+        },
+      },
+    });
+
+    const formatted = persons.map((p) => {
+      let parsedAdminModules: string[] = [];
+      if (p.userAccount?.adminModules) {
+        try {
+          parsedAdminModules = JSON.parse(p.userAccount.adminModules);
+        } catch {
+          parsedAdminModules = [];
+        }
+      } else if (p.adminModules) {
+        try {
+          parsedAdminModules = JSON.parse(p.adminModules);
+        } catch {
+          parsedAdminModules = [];
+        }
+      }
+
+      return {
+        ...p,
+        role: p.userAccount?.role || p.role || "member",
+        adminModules: parsedAdminModules,
+        userAccount: p.userAccount
+          ? {
+              ...p.userAccount,
+              adminModules: parsedAdminModules,
+            }
+          : null,
+      };
+    });
+
+    return NextResponse.json(formatted);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -15,15 +58,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { id: _id, createdAt: _ca, updatedAt: _ua, ...data } = await req.json();
-    if (data.password && typeof data.password === "string" && data.password.trim()) {
-      data.password = hashPassword(data.password.trim());
-    } else {
-      delete data.password;
-    }
+    await ensureUserSchema();
+    const { id: _id, createdAt: _ca, updatedAt: _ua, userAccount: _ua2, ...data } = await req.json();
+
+    // Pure genealogical person record
+    delete data.password;
+    delete data.adminModules;
+    if (!data.role) data.role = "member";
+
     const person = await prisma.person.create({ data });
-    const { password: _, ...sanitized } = person;
-    return NextResponse.json(sanitized, { status: 201 });
+    return NextResponse.json(person, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { User, Heart, Users, Network, Pencil, Trash2, Cake, Flame, Info, MoreHorizontal, Loader2, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { User, Heart, Users, Network, Pencil, Trash2, Cake, Flame, Info, MoreHorizontal, Loader2, ChevronLeft, ChevronRight, Star, Plus, UserPlus, ChevronDown, CalendarDays } from "lucide-react";
 import LotusIcon from "@/components/icons/LotusIcon";
 import { Lunar } from "lunar-javascript";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Person, Relationship, Marriage } from "@/types";
@@ -369,6 +369,7 @@ export default function ListPageContent({
   const [eventFilter, setEventFilter] = useState<EventFilter>("all");
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const load = () =>
     Promise.all([
@@ -382,11 +383,15 @@ export default function ListPageContent({
     });
 
   useEffect(() => {
-    load();
-    clanApi.get().then((c) => {
-      if (c?.name) setClanName(c.name);
-      if (c?.superAdminId) setSuperAdminId(c.superAdminId);
-      setClanLastNameSetting(c?.clanLastName ?? null);
+    Promise.all([
+      load(),
+      clanApi.get().then((c) => {
+        if (c?.name) setClanName(c.name);
+        if (c?.superAdminId) setSuperAdminId(c.superAdminId);
+        setClanLastNameSetting(c?.clanLastName ?? null);
+      }),
+    ]).finally(() => {
+      setLoading(false);
     });
   }, []);
 
@@ -468,7 +473,8 @@ export default function ListPageContent({
   const handleRemoveSpouse = (id: string) =>
     mutate(() => marriagesApi.delete(id));
 
-  const { canEdit, canEditPerson, canDeletePerson } = useAccess();
+  const { canEdit, canEditPerson, canDeletePerson, canManageCommunity, isSuperAdmin } = useAccess();
+  const canAddMember = isSuperAdmin || canManageCommunity || canEdit;
   const hasGenerations = persons.some((p) => p.generation != null);
   const generations = Array.from(
     new Set(persons.map((p) => p.generation).filter((g): g is number => g != null))
@@ -519,17 +525,24 @@ export default function ListPageContent({
   void clanName;
   void clanLastName;
 
+  if (loading) {
+    return (
+      <div className="flex-1 bg-white flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Đang tải dữ liệu...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 bg-white flex overflow-hidden">
 
       <main className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-6">
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-4 w-full">
-          <TabsTrigger value="events" className="flex-1">Sự kiện</TabsTrigger>
-          <TabsTrigger value="people" className="flex-1">Thành viên</TabsTrigger>
-          <TabsTrigger value="families" className="flex-1">Gia đình</TabsTrigger>
-        </TabsList>
-
+      <Tabs value={activeTab}>
         {/* ── People tab ── */}
         <TabsContent value="people">
           <>
@@ -540,6 +553,37 @@ export default function ListPageContent({
                 placeholder="Tìm theo tên..."
                 className="flex-1 min-w-0"
               />
+              {canAddMember && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 shrink-0 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs h-9 px-3.5 shadow-xs cursor-pointer"
+                    >
+                      <Plus size={15} />
+                      <span className="hidden sm:inline">Thêm mới</span>
+                      <ChevronDown size={14} className="opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuItem
+                      onSelect={() => setShowAddPerson(true)}
+                      className="gap-2.5 px-3 py-2 cursor-pointer text-xs"
+                    >
+                      <UserPlus size={16} className="text-teal-600" />
+                      <span>Thêm thành viên mới</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
+                      <Users size={16} className="text-slate-400" />
+                      <span>Thêm gia đình (Sắp có)</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
+                      <CalendarDays size={16} className="text-slate-400" />
+                      <span>Thêm ngày giỗ (Sắp có)</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             {generations.length > 0 ? (
@@ -792,20 +836,43 @@ export default function ListPageContent({
         {/* ── Events tab ── */}
         <TabsContent value="events">
           <>
-            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-none">
-              {(["all", "birthday", "anniversary"] as EventFilter[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setEventFilter(f)}
-                  className={`px-3.5 py-1 text-[0.875rem] font-medium rounded-full border transition-colors shrink-0 ${
-                    eventFilter === f
-                      ? "bg-brand-500 text-white border-brand-500"
-                      : "bg-white text-gray-600 border-border hover:border-gray-400"
-                  }`}
-                >
-                  {f === "all" ? "Tất cả" : f === "birthday" ? "Sinh nhật" : "Giỗ"}
-                </button>
-              ))}
+            {/* Tab chuyển đổi: Tất cả, Sinh nhật, Ngày giỗ */}
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl mb-5 w-full">
+              <button
+                type="button"
+                onClick={() => setEventFilter("all")}
+                className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all text-center cursor-pointer ${
+                  eventFilter === "all"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Tất cả ({allEvents.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventFilter("birthday")}
+                className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 text-center cursor-pointer ${
+                  eventFilter === "birthday"
+                    ? "bg-white text-pink-700 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Cake size={14} className={eventFilter === "birthday" ? "text-pink-600" : "text-slate-400"} />
+                <span>Sinh nhật ({allEvents.filter((e) => e.category === "birthday").length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventFilter("anniversary")}
+                className={`py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 text-center cursor-pointer ${
+                  eventFilter === "anniversary"
+                    ? "bg-white text-amber-800 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <LotusIcon size={14} className={eventFilter === "anniversary" ? "text-amber-700" : "text-slate-400"} />
+                <span>Ngày giỗ ({allEvents.filter((e) => e.category === "anniversary").length})</span>
+              </button>
             </div>
 
             {filteredEvents.length === 0 ? (

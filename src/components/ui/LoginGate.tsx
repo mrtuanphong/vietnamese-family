@@ -4,18 +4,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock, Phone, ShieldCheck } from "lucide-react";
-import { UserRole } from "@/types";
+import { UserRole, UserWorkspaceSummary } from "@/types";
 
 interface LoginGateProps {
   clanName: string;
   onGranted: (authData: {
+    userId?: string;
     role: UserRole;
+    isSuperAdmin?: boolean;
     name: string;
     personId: string;
     phone: string;
+    adminModules?: string[];
     editablePersonIds: string[];
     canEditClan: boolean;
     canEditTree: boolean;
+    workspaces?: UserWorkspaceSummary[];
+    activeWorkspaceId?: string;
+    clanName?: string;
+    enabledModules?: string[];
   }) => void;
 }
 
@@ -46,13 +53,20 @@ export default function LoginGate({ clanName, onGranted }: LoginGateProps) {
 
       if (res.ok && data.granted) {
         onGranted({
+          userId: data.userId ?? "",
           role: data.role,
+          isSuperAdmin: !!data.isSuperAdmin,
           name: data.name ?? "",
           personId: data.personId ?? "",
           phone: data.phone ?? account.trim(),
+          adminModules: data.adminModules ?? [],
           editablePersonIds: data.editablePersonIds ?? [],
           canEditClan: !!data.canEditClan,
           canEditTree: !!data.canEditTree,
+          workspaces: data.workspaces ?? [],
+          activeWorkspaceId: data.activeWorkspaceId ?? "",
+          clanName: data.clanName ?? clanName,
+          enabledModules: data.enabledModules,
         });
       } else {
         setError(data.error || "Số điện thoại hoặc mật khẩu không chính xác.");

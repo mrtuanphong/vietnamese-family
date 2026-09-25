@@ -144,6 +144,11 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -157,4 +162,26 @@ body {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Mobile viewport optimizations */
+body {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+input, textarea, [contenteditable="true"], .selectable-text {
+  user-select: text;
+}
+
+/* Custom scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }

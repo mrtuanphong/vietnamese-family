@@ -1,58 +1,128 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Menu, Home, Users, Network, Settings, Info,
-  Plus, UserPlus, CalendarDays,
-  CircleUser, LogOut,
-} from "lucide-react";
-import BottomTabBar from "@/components/ui/BottomTabBar";
-import { clanApi, personsApi } from "@/lib/api";
+import { toast } from "sonner";
+import { clanApi, personsApi, workspacesApi } from "@/lib/api";
 import { AccessContext, AccessContextValue } from "@/lib/AccessContext";
 import PersonDialog from "@/components/person/PersonDialog";
 import LoginGate from "@/components/ui/LoginGate";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { UserRole } from "@/types";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { UserRole, UserWorkspaceSummary, WorkspaceType } from "@/types";
+import { DEFAULT_ENABLED_MODULES, SYSTEM_MODULES, isModuleEnabled } from "@/config/modules";
 
 const LIST_ROUTES = ["/members", "/events", "/families"];
-
-const navItems = [
-  { href: "/",        label: "Trang chủ",          active: (p: string) => p === "/",                                        icon: Home },
-  { href: "/events",  label: "Danh sách",           active: (p: string) => LIST_ROUTES.some((r) => p.startsWith(r)),        icon: Users },
-  { href: "/tree",    label: "Cây gia phả",         active: (p: string) => p.startsWith("/tree"),                           icon: Network },
-  { href: "/clan",    label: "Thông tin dòng họ",   active: (p: string) => p.startsWith("/clan"),                           icon: Settings, requiresClanView: true },
-  { href: "/about",   label: "Về phần mềm",         active: (p: string) => p.startsWith("/about"),                          icon: Info,     requiresAboutView: true },
-];
-
-const HEADER_H = 56;
-const SIDEBAR_W = 224;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [clanName, setClanName] = useState("Gia Đình Việt");
+  const [enabledModules, setEnabledModules] = useState<string[]>(DEFAULT_ENABLED_MODULES);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [accessGranted, setAccessGranted] = useState(false);
   const [loggedInName, setLoggedInName] = useState("");
   const [role, setRole] = useState<UserRole | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [adminModules, setAdminModules] = useState<string[]>([]);
   const [personId, setPersonId] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
   const [editablePersonIds, setEditablePersonIds] = useState<string[]>([]);
   const [isDev, setIsDev] = useState(false);
 
-  useEffect(() => {
-    setOpen(window.innerWidth >= 768);
+  // Multi-workspace states
+  const [userId, setUserId] = useState<string | null>(null);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<UserWorkspaceSummary[]>([]);
 
+  const updateEnabledModules = useCallback((modules: string[]) => {
+    setEnabledModules(modules);
+  }, []);
+
+  const refreshClan = useCallback(async () => {
+    try {
+      const c = await clanApi.get();
+      if (c?.name) setClanName(c.name);
+      if (c?.enabledModules && Array.isArray(c.enabledModules)) {
+        setEnabledModules(c.enabledModules);
+      }
+    } catch (err) {
+      console.error("Error refreshing clan:", err);
+    }
+  }, []);
+
+  const switchWorkspace = useCallback(
+    async (targetWorkspaceId: string) => {
+      try {
+        const target = workspaces.find((w) => w.workspaceId === targetWorkspaceId);
+        if (!target) return;
+
+        const isSuper = target.role === "super_admin";
+        sessionStorage.setItem("giapha_active_workspace_id", targetWorkspaceId);
+        sessionStorage.setItem("giapha_role", target.role);
+        sessionStorage.setItem("giapha_is_super_admin", String(isSuper));
+        sessionStorage.setItem("giapha_admin_modules", JSON.stringify(target.adminModules || []));
+        sessionStorage.setItem("giapha_person_id", target.personId || "");
+        sessionStorage.setItem("giapha_clan_name", target.workspaceName);
+
+        setActiveWorkspaceId(targetWorkspaceId);
+        setClanName(target.workspaceName);
+        setRole(target.role);
+        setIsSuperAdmin(isSuper);
+        setAdminModules(target.adminModules || []);
+        setPersonId(target.personId || null);
+        if (target.enabledModules && target.enabledModules.length > 0) {
+          setEnabledModules(target.enabledModules);
+        }
+
+        toast.success(`Đã chuyển sang: ${target.workspaceName}`);
+        router.refresh();
+      } catch (err) {
+        toast.error("Không thể chuyển đổi không gian: " + String(err));
+      }
+    },
+    [workspaces, router]
+  );
+
+  const createWorkspace = useCallback(
+    async (name: string, type: WorkspaceType = "CLAN") => {
+      try {
+        const created = await workspacesApi.create({
+          name,
+          type,
+          creatorUserId: userId || undefined,
+        });
+
+        // Refresh workspaces list
+        const updatedList = await workspacesApi.getAll(userId || undefined);
+        setWorkspaces(updatedList);
+        sessionStorage.setItem("giapha_workspaces", JSON.stringify(updatedList));
+
+        // Switch to newly created workspace
+        await switchWorkspace(created.id);
+        toast.success(`Đã tạo không gian mới: ${created.name}`);
+      } catch (err) {
+        toast.error("Tạo tổ chức thất bại: " + String(err));
+      }
+    },
+    [userId, switchWorkspace]
+  );
+
+  const refreshWorkspaces = useCallback(async () => {
+    try {
+      if (userId) {
+        const list = await workspacesApi.getAll(userId);
+        setWorkspaces(list);
+        sessionStorage.setItem("giapha_workspaces", JSON.stringify(list));
+      }
+    } catch (err) {
+      console.error("Error refreshing workspaces:", err);
+    }
+  }, [userId]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
       if (host === "localhost" || host === "127.0.0.1" || host.includes("dev")) {
@@ -60,26 +130,81 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Read sessionStorage synchronously before any async calls
+    // Read sessionStorage synchronously
     const granted = sessionStorage.getItem("giapha_access") === "granted";
     setAccessGranted(granted);
     if (granted) {
+      const storedRole = (sessionStorage.getItem("giapha_role") as UserRole) ?? "member";
+      const isSuper = sessionStorage.getItem("giapha_is_super_admin") === "true" || storedRole === "super_admin";
+      const storedUserId = sessionStorage.getItem("giapha_user_id");
+      const storedActiveWsId = sessionStorage.getItem("giapha_active_workspace_id");
+      const storedWorkspaces = sessionStorage.getItem("giapha_workspaces");
+      const storedClanName = sessionStorage.getItem("giapha_clan_name");
+
+      if (storedUserId) setUserId(storedUserId);
+      if (storedActiveWsId) setActiveWorkspaceId(storedActiveWsId);
+      if (storedClanName) setClanName(storedClanName);
+      if (storedWorkspaces) {
+        try {
+          setWorkspaces(JSON.parse(storedWorkspaces));
+        } catch {}
+      }
+
       setLoggedInName(sessionStorage.getItem("giapha_name") ?? "");
-      setRole((sessionStorage.getItem("giapha_role") as UserRole) ?? "member");
+      setRole(storedRole);
+      setIsSuperAdmin(isSuper);
       setPersonId(sessionStorage.getItem("giapha_person_id") ?? null);
       setPhone(sessionStorage.getItem("giapha_phone") ?? null);
+
+      try {
+        const storedAdminModules = sessionStorage.getItem("giapha_admin_modules");
+        setAdminModules(storedAdminModules ? JSON.parse(storedAdminModules) : (isSuper ? ["*"] : []));
+      } catch {
+        setAdminModules(isSuper ? ["*"] : []);
+      }
       try {
         const storedIds = sessionStorage.getItem("giapha_editable_ids");
-        setEditablePersonIds(storedIds ? JSON.parse(storedIds) : []);
+        setEditablePersonIds(storedIds ? JSON.parse(storedIds) : (isSuper ? ["*"] : []));
       } catch {
         setEditablePersonIds([]);
       }
     }
     setMounted(true);
 
-    clanApi.get().then((c) => {
-      if (c?.name) setClanName(c.name);
-    });
+    const activeWsId = sessionStorage.getItem("giapha_active_workspace_id");
+    const uId = sessionStorage.getItem("giapha_user_id");
+    if (uId) {
+      workspacesApi.getAll(uId).then((wsList) => {
+        if (Array.isArray(wsList) && wsList.length > 0) {
+          setWorkspaces(wsList);
+          sessionStorage.setItem("giapha_workspaces", JSON.stringify(wsList));
+          const current = wsList.find((w: any) => w.workspaceId === activeWsId) || wsList[0];
+          if (current) {
+            setActiveWorkspaceId(current.workspaceId);
+            setClanName(current.workspaceName);
+            if (current.enabledModules) setEnabledModules(current.enabledModules);
+          }
+        }
+      }).catch(() => {});
+    } else {
+      clanApi.get().then((c) => {
+        if (c?.name) setClanName(c.name);
+        if (c?.enabledModules && Array.isArray(c.enabledModules)) {
+          setEnabledModules(c.enabledModules);
+        }
+      });
+    }
+
+    const handleClanUpdated = (e: any) => {
+      const updated = e?.detail;
+      if (updated) {
+        if (updated.name) setClanName(updated.name);
+        if (updated.enabledModules && Array.isArray(updated.enabledModules)) {
+          setEnabledModules(updated.enabledModules);
+        }
+      }
+    };
+    window.addEventListener("clan:updated" as any, handleClanUpdated);
 
     fetch("/api/access")
       .then((r) => r.json())
@@ -89,18 +214,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
+
+    return () => {
+      window.removeEventListener("clan:updated" as any, handleClanUpdated);
+    };
   }, []);
 
-  const canEditClan = role === "super_admin";
-  const canEditTree = role === "admin" || role === "super_admin";
-  const canEdit = canEditTree;
-  const canViewClan = role === "admin" || role === "super_admin";
-  const canViewAbout = role === "admin" || role === "super_admin";
+  const isSuper = isSuperAdmin || role === "super_admin";
+
+  const canManageModule = useCallback(
+    (key: string): boolean => {
+      if (isSuper) return true;
+      if (adminModules.includes("*")) return true;
+      return adminModules.includes(key);
+    },
+    [isSuper, adminModules]
+  );
+
+  const canManageCommunity = isSuper || role === "admin" || canManageModule("community") || canManageModule("tree");
+  const canManageFinance = isSuper || role === "admin" || canManageModule("finance") || canManageModule("funds");
+  const canEditClan = isSuper;
+  const canEditTree = canManageCommunity;
+  const canEdit = canManageCommunity;
+  const canViewClan = isSuper || role === "admin" || adminModules.length > 0;
+  const canViewAbout = true;
 
   const canEditPerson = useCallback(
     (targetPersonId?: string | null): boolean => {
       if (!targetPersonId) return false;
-      if (role === "super_admin" || role === "admin") return true;
+      if (isSuper || canManageCommunity) return true;
       if (role === "member") {
         return (
           editablePersonIds.includes(targetPersonId) ||
@@ -110,81 +252,150 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       }
       return false;
     },
-    [role, editablePersonIds, personId]
+    [isSuper, canManageCommunity, role, editablePersonIds, personId]
   );
 
   const canDeletePerson = useCallback(
     (targetPersonId?: string | null): boolean => {
       if (!targetPersonId) return false;
-      // Không cho phép bất kỳ ai (member, admin) tự xóa tài khoản của chính mình
       if (targetPersonId === personId) return false;
-      // Role member không có quyền xóa bất kỳ ai
-      if (role === "member") return false;
-      // Role admin hoặc super_admin có quyền xóa thành viên khác
-      if (role === "super_admin" || role === "admin") return true;
+      if (isSuper || canManageCommunity) return true;
       return false;
     },
-    [role, personId]
+    [isSuper, canManageCommunity, personId]
   );
 
-  // Route protection: Members cannot view /clan and /about
+  // Route protection for administration
   useEffect(() => {
     if (!mounted || !accessGranted) return;
-    if (role === "member") {
-      if (pathname.startsWith("/clan") || pathname.startsWith("/about")) {
+    const hasAdminAccess = isSuper || role === "admin" || canViewClan;
+    if (!hasAdminAccess) {
+      if (pathname.startsWith("/clan") || pathname.startsWith("/settings")) {
         router.replace("/");
       }
     }
-  }, [mounted, accessGranted, role, pathname, router]);
+  }, [mounted, accessGranted, isSuper, role, canViewClan, pathname, router]);
 
-  const desktopOpen = mounted && open;
+  // Route protection for disabled modules
+  useEffect(() => {
+    if (!mounted || !accessGranted) return;
+    const currentModule = SYSTEM_MODULES.find(
+      (m) => m.href === pathname || (m.href !== "/" && pathname.startsWith(m.href + "/"))
+    );
+    if (currentModule && !isModuleEnabled(currentModule.id, enabledModules)) {
+      toast.info(`Tính năng "${currentModule.name}" hiện đang tắt.`);
+      router.replace("/");
+    }
+  }, [mounted, accessGranted, pathname, enabledModules, router]);
 
   const rawPageTitle = (() => {
-    if (pathname === "/") return "Trang chủ";
-    if (LIST_ROUTES.some((r) => pathname.startsWith(r))) return "Danh sách";
+    if (pathname === "/") return "Tổng quan hệ thống";
     if (pathname.startsWith("/tree")) return "Cây gia phả";
-    if (pathname.startsWith("/clan")) return "Thông tin dòng họ";
-    if (pathname.startsWith("/about")) return "Về phần mềm";
+    if (pathname.startsWith("/members")) return "Danh bạ thành viên";
+    if (pathname.startsWith("/events")) return "Lịch giỗ & Sự kiện";
+    if (pathname.startsWith("/families")) return "Hộ gia đình";
+    if (pathname.startsWith("/community/settings")) return "Thiết lập dòng họ & Gia tộc";
+    if (pathname.startsWith("/funds")) return "Các quỹ hội nhóm";
+    if (pathname.startsWith("/transactions")) return "Sổ cái thu - chi";
+    if (pathname.startsWith("/finance/settings")) return "Thiết lập tài chính & Quỹ";
+    if (pathname.startsWith("/settings")) return "Cài đặt tổ chức & Hệ thống";
+    if (pathname.startsWith("/clan")) return "Thiết lập dòng họ";
+    if (pathname.startsWith("/about")) return "Hệ thống & CSDL";
     return "";
   })();
 
-  const pageTitle = rawPageTitle ? (isDev ? `[Dev] ${rawPageTitle}` : rawPageTitle) : "";
+  const pageTitle = rawPageTitle;
 
   useEffect(() => {
     const fullTitle = rawPageTitle
-      ? `${isDev ? "[Dev] " : ""}${rawPageTitle} · Gia Đình Việt`
-      : `${isDev ? "[Dev] " : ""}Gia Đình Việt`;
+      ? `${isDev ? "[Dev] " : ""}${rawPageTitle} · ${clanName}`
+      : `${isDev ? "[Dev] " : ""}${clanName}`;
     document.title = fullTitle;
-  }, [rawPageTitle, isDev]);
+  }, [rawPageTitle, isDev, clanName]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("giapha_access");
+    sessionStorage.removeItem("giapha_name");
+    sessionStorage.removeItem("giapha_role");
+    sessionStorage.removeItem("giapha_is_super_admin");
+    sessionStorage.removeItem("giapha_admin_modules");
+    sessionStorage.removeItem("giapha_person_id");
+    sessionStorage.removeItem("giapha_phone");
+    sessionStorage.removeItem("giapha_editable_ids");
+    sessionStorage.removeItem("giapha_user_id");
+    sessionStorage.removeItem("giapha_active_workspace_id");
+    sessionStorage.removeItem("giapha_workspaces");
+    sessionStorage.removeItem("giapha_clan_name");
+    setAccessGranted(false);
+    setLoggedInName("");
+    setRole(null);
+    setIsSuperAdmin(false);
+    setAdminModules([]);
+    setPersonId(null);
+    setPhone(null);
+    setUserId(null);
+    setActiveWorkspaceId(null);
+    setWorkspaces([]);
+    setEditablePersonIds([]);
+  };
 
   const accessContextValue: AccessContextValue = useMemo(
     () => ({
+      userId,
+      isSuperAdmin: isSuper,
       canEdit,
       role,
       personId,
       name: loggedInName,
       phone,
+      adminModules,
       editablePersonIds,
-      canEditClan,
-      canEditTree,
+      canEditClan: isSuperAdmin,
+      canEditTree: canManageCommunity,
+      canManageCommunity,
+      canManageFinance,
+      canManageModule,
       canViewClan,
       canViewAbout,
       canEditPerson,
       canDeletePerson,
+      enabledModules,
+      clanName,
+      updateEnabledModules,
+      refreshClan,
+      activeWorkspaceId,
+      workspaces,
+      switchWorkspace,
+      createWorkspace,
+      refreshWorkspaces,
     }),
     [
+      userId,
+      isSuper,
       canEdit,
       role,
       personId,
       loggedInName,
       phone,
+      adminModules,
       editablePersonIds,
-      canEditClan,
-      canEditTree,
+      isSuperAdmin,
+      canManageCommunity,
+      canManageFinance,
+      canManageModule,
       canViewClan,
       canViewAbout,
       canEditPerson,
       canDeletePerson,
+      enabledModules,
+      clanName,
+      updateEnabledModules,
+      refreshClan,
+      activeWorkspaceId,
+      workspaces,
+      switchWorkspace,
+      createWorkspace,
+      refreshWorkspaces,
     ]
   );
 
@@ -196,229 +407,133 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           sessionStorage.setItem("giapha_access", "granted");
           sessionStorage.setItem("giapha_name", authData.name);
           sessionStorage.setItem("giapha_role", authData.role);
-          sessionStorage.setItem("giapha_person_id", authData.personId);
+          sessionStorage.setItem("giapha_is_super_admin", String(!!authData.isSuperAdmin));
+          sessionStorage.setItem("giapha_personId", authData.personId ?? "");
           sessionStorage.setItem("giapha_phone", authData.phone);
+          sessionStorage.setItem(
+            "giapha_admin_modules",
+            JSON.stringify(authData.adminModules ?? [])
+          );
           sessionStorage.setItem(
             "giapha_editable_ids",
             JSON.stringify(authData.editablePersonIds)
           );
+
+          if (authData.userId) {
+            sessionStorage.setItem("giapha_user_id", authData.userId);
+            setUserId(authData.userId);
+          }
+          if (authData.activeWorkspaceId) {
+            sessionStorage.setItem("giapha_active_workspace_id", authData.activeWorkspaceId);
+            setActiveWorkspaceId(authData.activeWorkspaceId);
+          }
+          if (authData.workspaces) {
+            sessionStorage.setItem("giapha_workspaces", JSON.stringify(authData.workspaces));
+            setWorkspaces(authData.workspaces);
+          }
+          if (authData.clanName) {
+            sessionStorage.setItem("giapha_clan_name", authData.clanName);
+            setClanName(authData.clanName);
+          }
+          if (authData.enabledModules && authData.enabledModules.length > 0) {
+            setEnabledModules(authData.enabledModules);
+          }
+
           setAccessGranted(true);
           setLoggedInName(authData.name);
           setRole(authData.role);
+          setIsSuperAdmin(!!authData.isSuperAdmin);
           setPersonId(authData.personId);
           setPhone(authData.phone);
+          setAdminModules(authData.adminModules ?? []);
           setEditablePersonIds(authData.editablePersonIds);
         }}
       />
     );
   }
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.requiresClanView && !canViewClan) return false;
-    if (item.requiresAboutView && !canViewAbout) return false;
-    return true;
-  });
-
-  const getRoleBadge = () => {
-    switch (role) {
-      case "super_admin":
-        return (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-foreground/20 text-primary-foreground shrink-0">
-            Super Admin
-          </span>
-        );
-      case "admin":
-        return (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground/90 shrink-0">
-            Quản trị viên
-          </span>
-        );
-      case "member":
-      default:
-        return (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-foreground/10 text-primary-foreground/80 shrink-0">
-            Thành viên
-          </span>
-        );
-    }
-  };
-
-  const getRoleDisplayTitle = () => {
-    switch (role) {
-      case "super_admin":
-        return "Super Admin";
-      case "admin":
-        return "Quản trị viên";
-      case "member":
-      default:
-        return "Thành viên dòng họ";
-    }
-  };
+  const isFullBleedRoute =
+    pathname.startsWith("/tree") ||
+    pathname.startsWith("/members") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/families") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/community/settings") ||
+    pathname.startsWith("/finance/settings");
 
   return (
     <AccessContext.Provider value={accessContextValue}>
-      {/* Mobile overlay */}
-      {open && mounted && (
-        <div
-          className="fixed inset-0 bg-black/40 z-10 md:hidden"
-          onClick={() => setOpen(false)}
+      <div className="h-screen h-dvh w-full flex flex-col md:flex-row overflow-hidden bg-slate-100/60 text-slate-900">
+        {/* Sidebar on Desktop / Tablet (>= 768px) */}
+        <Sidebar
+          clanName={clanName}
+          isDev={isDev}
+          isSuperAdmin={isSuper}
+          adminModules={adminModules}
+          enabledModules={enabledModules}
+          userName={loggedInName}
+          role={role}
+          phone={phone}
+          activeWorkspaceId={activeWorkspaceId}
+          workspaces={workspaces}
+          onLogout={handleLogout}
+          onOpenSettings={() => router.push("/settings")}
+          onSwitchWorkspace={switchWorkspace}
+          onCreateWorkspace={createWorkspace}
         />
-      )}
 
-      {/* Sidebar — full viewport height */}
-      <aside
-        className="fixed left-0 top-0 h-screen w-56 bg-white z-20 flex flex-col transition-transform duration-200"
-        style={{ transform: open ? "translateX(0)" : "translateX(-100%)" }}
-      >
-        {/* Sidebar brand */}
-        <div className="h-14 shrink-0 flex items-center gap-2 px-4 bg-primary border-r border-primary-foreground/20">
-          <span className="text-primary-foreground font-semibold text-base truncate flex-1 min-w-0">
-            {clanName}
-          </span>
-        </div>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+          {/* Header on Mobile & Desktop */}
+          <Header
+            clanName={clanName}
+            isDev={isDev}
+            isSuperAdmin={isSuper}
+            adminModules={adminModules}
+            pageTitle={rawPageTitle}
+            role={role}
+            loggedInName={loggedInName}
+            phone={phone}
+            canEditTree={canEditTree}
+            onAddPerson={() => setShowAddPerson(true)}
+            onLogout={handleLogout}
+          />
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 border-r">
-          {visibleNavItems.map(({ href, label, active: isActive, icon: Icon }) => {
-            const active = isActive(pathname);
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => {
-                  if (typeof window !== "undefined" && window.innerWidth < 768) setOpen(false);
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 mx-2 my-0.5 rounded-lg font-medium transition-colors ${
-                  active ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <Icon size={20} className={active ? "text-gray-700" : "text-gray-400"} />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Main: header + content */}
-      <div
-        className="transition-all duration-200 flex flex-col h-dvh"
-        style={{ marginLeft: desktopOpen ? SIDEBAR_W : 0 }}
-      >
-        {/* Header */}
-        <header className="sticky top-0 z-30 h-14 shrink-0 bg-primary flex items-center px-3 gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setOpen(!open)}
-            aria-label="Mở/đóng menu"
-            className="hidden md:inline-flex text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+          {/* Main content viewport */}
+          <main
+            className={`flex-1 flex flex-col min-w-0 min-h-0 ${
+              isFullBleedRoute
+                ? "overflow-hidden"
+                : "overflow-y-auto overscroll-contain"
+            }`}
           >
-            <Menu size={20} />
-          </Button>
-
-          {pageTitle && (
-            <span className="text-primary-foreground font-semibold text-base truncate">
-              {pageTitle}
-            </span>
-          )}
-          <div className="flex-1 min-w-0" />
-
-          {/* Right actions */}
-          <div className="flex items-center gap-1">
-            {getRoleBadge()}
-
-            {canEditTree && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Thêm mới"
-                    className="rounded-full text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=open]:bg-primary-foreground/10 data-[state=open]:text-primary-foreground"
-                  >
-                    <Plus size={20} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onSelect={() => setShowAddPerson(true)} className="gap-3 px-4 py-3 cursor-pointer">
-                    <UserPlus size={18} className="text-gray-400" />
-                    Thêm người
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="gap-3 px-4 py-3">
-                    <Users size={18} className="text-gray-300" />
-                    Thêm gia đình
-                  </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="gap-3 px-4 py-3">
-                    <CalendarDays size={18} className="text-gray-300" />
-                    Thêm sự kiện
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {isFullBleedRoute ? (
+              children
+            ) : (
+              <div className="w-full max-w-6xl mx-auto p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
+                {children}
+              </div>
             )}
+          </main>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Tài khoản"
-                  className="rounded-full text-primary-foreground/80 hover:bg-primary-foreground/10 hover:text-primary-foreground data-[state=open]:bg-primary-foreground/10 data-[state=open]:text-primary-foreground"
-                >
-                  <CircleUser size={20} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {loggedInName && (
-                  <div className="px-4 py-3 border-b">
-                    <p className="font-semibold text-gray-900 truncate">{loggedInName}</p>
-                    <p className="text-xs text-brand-600 font-medium mt-0.5">{getRoleDisplayTitle()}</p>
-                    {phone && <p className="text-xs text-gray-400 mt-0.5">{phone}</p>}
-                  </div>
-                )}
-                <DropdownMenuItem
-                  className="gap-3 px-4 py-3 cursor-pointer text-red-600 focus:text-red-600"
-                  onSelect={() => {
-                    sessionStorage.removeItem("giapha_access");
-                    sessionStorage.removeItem("giapha_name");
-                    sessionStorage.removeItem("giapha_role");
-                    sessionStorage.removeItem("giapha_person_id");
-                    sessionStorage.removeItem("giapha_phone");
-                    sessionStorage.removeItem("giapha_editable_ids");
-                    setAccessGranted(false);
-                    setLoggedInName("");
-                    setRole(null);
-                    setPersonId(null);
-                    setPhone(null);
-                    setEditablePersonIds([]);
-                  }}
-                >
-                  <LogOut size={18} />
-                  Đăng xuất
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-          </div>
-        </header>
-
-        {/* Page content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {children}
+          {/* Bottom Nav on Mobile (< 768px) */}
+          <BottomNav
+            enabledModules={enabledModules}
+            onOpenAccount={() => router.push("/settings")}
+          />
         </div>
-        <BottomTabBar />
-      </div>
 
-      <PersonDialog
-        open={showAddPerson}
-        onOpenChange={setShowAddPerson}
-        title="Thêm người"
-        onSubmit={async (data) => {
-          await personsApi.create(data);
-          setShowAddPerson(false);
-          router.refresh();
-        }}
-      />
+        <PersonDialog
+          open={showAddPerson}
+          onOpenChange={setShowAddPerson}
+          title="Thêm người"
+          onSubmit={async (data) => {
+            await personsApi.create(data);
+            setShowAddPerson(false);
+            router.refresh();
+          }}
+        />
+      </div>
     </AccessContext.Provider>
   );
 }

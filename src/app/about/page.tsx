@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExternalLink } from "lucide-react";
 import { useAccess } from "@/lib/AccessContext";
+import { PageLoading } from "@/components/ui/PageLoading";
 
 type BadgeType = "new" | "improved" | "fixed";
 
@@ -266,7 +267,7 @@ export default function AboutPage() {
 
           <TabsContent value="system" className="space-y-6">
             {loadingSystem ? (
-              <div className="py-8 text-center text-sm text-gray-400">Đang tải thông tin hệ thống...</div>
+              <PageLoading message="Đang tải thông tin hệ thống & CSDL..." className="py-16" />
             ) : systemInfo ? (
               <div className="space-y-6">
                 {/* Environment Status Card */}
