@@ -58,7 +58,9 @@ Hệ thống dùng tính năng **Branching** của Neon Serverless Postgres:
 
 ## 5. Hướng Dẫn Thiết Lập Khi Cài Lại Máy Hoặc Chuyển Máy Mới
 
-Khi bạn cài lại hệ điều hành hoặc chuyển sang làm việc trên một máy tính khác, hãy làm theo các bước sau:
+> 📖 **Xem hướng dẫn chi tiết từng bước và cách xử lý sự cố tại: [docs/SETUP_NEW_MACHINE.md](./SETUP_NEW_MACHINE.md)**
+
+Tóm tắt nhanh khi bạn cài lại hệ điều hành hoặc chuyển sang làm việc trên một máy tính khác:
 
 ### Bước 1: Clone mã nguồn về máy
 ```bash

@@ -10,11 +10,9 @@
 - **Lịch Âm:** Thư viện `lunar-javascript`
 
 ## 📖 Tài liệu hướng dẫn chi tiết
-Xem toàn bộ tài liệu vận hành và kiến trúc tại: **[docs/DEVELOPMENT_GUIDE.md](./docs/DEVELOPMENT_GUIDE.md)**
-- Mô hình 2 môi trường Dev & Production
-- Cơ chế phân nhánh CSDL trên Neon (Branching)
-- Hướng dẫn cấu hình lại biến môi trường `.env` khi cài lại máy hoặc chuyển máy
-- Quy trình Git workflow và CI/CD tự động lên Vercel
+- **[Thiết lập dự án trên máy tính mới](./docs/SETUP_NEW_MACHINE.md)**: Hướng dẫn chi tiết từng bước khi clone và làm việc trên máy tính mới.
+- **[Vận hành & kiến trúc hệ thống](./docs/DEVELOPMENT_GUIDE.md)**: Chi tiết mô hình 2 môi trường Dev & Production, cơ chế CSDL Neon, Git workflow.
+- **[Thiết lập hệ thống từ đầu](./docs/SETUP_FROM_SCRATCH.md)**: Hướng dẫn khởi tạo toàn bộ hạ tầng GitHub, Neon và Vercel từ con số 0.
 
 ## 🛠️ Hướng dẫn chạy thử cục bộ (Local)
 1. Cài đặt dependencies:
