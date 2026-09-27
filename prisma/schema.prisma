@@ -17,6 +17,7 @@ model Workspace {
   clanLastName         String?
   superAdminId         String?
   superAdminGeneration Int?
+  themeColor           String?           @default("teal")
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
@@ -50,6 +51,7 @@ model Clan {
   superAdminGeneration Int?
   clanLastName         String?
   enabledModules       String?
+  themeColor           String?  @default("teal")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

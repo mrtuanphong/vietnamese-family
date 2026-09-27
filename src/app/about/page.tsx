@@ -196,7 +196,7 @@ export default function AboutPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-4 py-8 pb-24 sm:pb-8">
         <h1 className="text-xl font-bold text-gray-900 mb-1">Thông tin phần mềm</h1>
-        <p className="text-sm text-gray-500 mb-6">Ứng dụng quản lý gia phả dòng họ</p>
+        <p className="text-sm text-gray-500 mb-6">Nền tảng kết nối cộng đồng, quản lý phả hệ dòng họ và tổ chức (Community Connection)</p>
 
         <Tabs defaultValue="features">
           <TabsList className="mb-6">
@@ -403,7 +403,7 @@ export default function AboutPage() {
 
                     <div className="pt-2 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <a
-                        href="https://do.lifeofphong.com"
+                        href="https://ketnoicongdong.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-50 transition-colors group"
@@ -413,7 +413,7 @@ export default function AboutPage() {
                             Website Production
                           </span>
                           <span className="text-[0.7rem] text-emerald-700">
-                            do.lifeofphong.com
+                            ketnoicongdong.com (do.lifeofphong.com)
                           </span>
                         </div>
                         <ExternalLink size={14} className="text-emerald-600 shrink-0" />

@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 import { UserRole, UserWorkspaceSummary, WorkspaceType } from "@/types";
 import { DEFAULT_ENABLED_MODULES } from "@/config/modules";
+import { DEFAULT_THEME_ID } from "@/config/themes";
 
 export interface AccessContextValue {
   userId: string | null;
@@ -29,11 +30,14 @@ export interface AccessContextValue {
   workspaces: UserWorkspaceSummary[];
   enabledModules: string[];
   clanName: string;
+  themeColor: string;
+  updateThemeColor: (color: string) => void;
   updateEnabledModules: (modules: string[]) => void;
   refreshClan: () => Promise<void>;
   switchWorkspace: (workspaceId: string) => Promise<void>;
   createWorkspace: (name: string, type?: WorkspaceType) => Promise<void>;
   refreshWorkspaces: () => Promise<void>;
+  updateCurrentUser: (data: { name?: string; phone?: string; personId?: string; avatarUrl?: string }) => void;
 }
 
 export const defaultAccessValue: AccessContextValue = {
@@ -59,12 +63,15 @@ export const defaultAccessValue: AccessContextValue = {
   activeWorkspaceId: null,
   workspaces: [],
   enabledModules: DEFAULT_ENABLED_MODULES,
-  clanName: "Gia Đình Việt",
+  clanName: "Kết Nối Cộng Đồng",
+  themeColor: DEFAULT_THEME_ID,
+  updateThemeColor: () => {},
   updateEnabledModules: () => {},
   refreshClan: async () => {},
   switchWorkspace: async () => {},
   createWorkspace: async () => {},
   refreshWorkspaces: async () => {},
+  updateCurrentUser: () => {},
 };
 
 export const AccessContext = createContext<AccessContextValue>(defaultAccessValue);

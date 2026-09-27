@@ -157,22 +157,23 @@ export default function FinanceSettingsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white">
-      <main className="max-w-3xl mx-auto px-4 py-8 pb-24 sm:pb-8">
-        {!isSuper && !canManageFinance && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm flex items-start gap-2.5 mb-5">
-            <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
-            <p>
-              Chỉ <strong>Super Admin</strong> hoặc <strong>Thủ quỹ (Quản trị viên Tài Chính)</strong> mới có quyền chỉnh sửa thiết lập này.
-            </p>
-          </div>
-        )}
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-white overflow-hidden">
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* Scrollable form body */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-8 py-6">
+          <div className="max-w-3xl mx-auto space-y-6">
+            {!isSuper && !canManageFinance && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm flex items-start gap-2.5">
+                <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  Chỉ <strong>Super Admin</strong> hoặc <strong>Thủ quỹ (Quản trị viên Tài Chính)</strong> mới có quyền chỉnh sửa thiết lập này.
+                </p>
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-6 sm:border sm:rounded-xl sm:p-6">
             {/* Header section */}
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
                 <WalletCards className="w-5 h-5" />
               </div>
               <div>
@@ -183,202 +184,213 @@ export default function FinanceSettingsPage() {
               </div>
             </div>
 
-            {/* Tài khoản ngân hàng VietQR */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <Landmark className="w-4 h-4 text-blue-600" />
-                <span>Tài khoản ngân hàng mặc định nhận chuyển khoản VietQR</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-medium text-xs text-slate-700">Ngân hàng thụ hưởng *</label>
-                  <Select value={bankName} onValueChange={setBankName}>
-                    <SelectTrigger className="mt-1 bg-white">
-                      <SelectValue placeholder="Chọn ngân hàng" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {POPULAR_BANKS.map((b) => (
-                        <SelectItem key={b.code} value={b.code}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {/* Main Section Content WITHOUT OUTER BORDER */}
+            <div className="flex flex-col gap-6">
+              {/* Tài khoản ngân hàng VietQR */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Landmark className="w-4 h-4 text-brand-600" />
+                  <span>Tài khoản ngân hàng mặc định nhận chuyển khoản VietQR</span>
                 </div>
 
-                <div>
-                  <label className="font-medium text-xs text-slate-700">Số tài khoản ngân hàng *</label>
-                  <Input
-                    required
-                    value={bankAccount}
-                    onChange={(e) => setBankAccount(e.target.value)}
-                    placeholder="VD: 0988889999"
-                    className="mt-1 font-mono font-semibold"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-medium text-xs text-slate-700">Ngân hàng thụ hưởng *</label>
+                    <Select value={bankName} onValueChange={setBankName}>
+                      <SelectTrigger className="mt-1 bg-white">
+                        <SelectValue placeholder="Chọn ngân hàng" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {POPULAR_BANKS.map((b) => (
+                          <SelectItem key={b.code} value={b.code}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <label className="font-medium text-xs text-slate-700">Tên chủ tài khoản (In hoa không dấu) *</label>
-                <Input
-                  required
-                  value={accountHolder}
-                  onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
-                  placeholder="VD: THU QUY DONG HO hoặc DO VAN AN"
-                  className="mt-1 font-mono uppercase font-semibold"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Khớp với tên tài khoản hiển thị trên ứng dụng ngân hàng khi người đóng quét mã QR.
-                </p>
-              </div>
-
-              {/* QR Code preview */}
-              {previewQrUrl && (
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4">
-                  <div className="w-28 h-28 bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-center shrink-0">
-                    <img
-                      src={previewQrUrl}
-                      alt="VietQR Preview"
-                      className="w-full h-full object-contain"
+                  <div>
+                    <label className="font-medium text-xs text-slate-700">Số tài khoản ngân hàng *</label>
+                    <Input
+                      required
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                      placeholder="VD: 0988889999"
+                      className="mt-1 font-mono font-semibold"
                     />
                   </div>
-                  <div className="space-y-1.5 text-center sm:text-left min-w-0">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold">
-                      <QrCode className="w-3 h-3" />
-                      <span>Xem trước mã VietQR tự động</span>
-                    </div>
-                    <div className="font-bold text-sm text-slate-900">
-                      {accountHolder || "CHỦ TÀI KHOẢN"}
-                    </div>
-                    <div className="text-xs text-slate-600 font-mono">
-                      {bankName} • {bankAccount}
-                    </div>
-                    <div className="text-xs text-emerald-600 font-semibold">
-                      Định mức: {formatVND(amountPerCycle)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Chu kỳ đóng góp & Mức thu mặc định */}
-            <div className="border-t pt-5 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span>Chu kỳ đóng góp & Định mức quỹ mặc định</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-medium text-xs text-slate-700">Loại chu kỳ thu quỹ</label>
-                  <Select value={cycleType} onValueChange={handleCycleTypeChange}>
-                    <SelectTrigger className="mt-1 bg-white">
-                      <SelectValue placeholder="Chọn chu kỳ" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1_YEAR">Hàng năm (1 năm / lần)</SelectItem>
-                      <SelectItem value="QUARTER">Hàng quý (3 tháng / lần)</SelectItem>
-                      <SelectItem value="MONTH">Hàng tháng (1 tháng / lần)</SelectItem>
-                      <SelectItem value="EVENT">Vận động theo sự kiện</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div>
-                  <label className="font-medium text-xs text-slate-700">Mức đóng mặc định (VNĐ) *</label>
+                  <label className="font-medium text-xs text-slate-700">Tên chủ tài khoản (In hoa không dấu) *</label>
                   <Input
-                    type="number"
-                    min={0}
-                    step={10000}
-                    value={amountPerCycle}
-                    onChange={(e) => setAmountPerCycle(Number(e.target.value) || 0)}
-                    placeholder="500000"
-                    className="mt-1 font-bold text-slate-900"
+                    required
+                    value={accountHolder}
+                    onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
+                    placeholder="VD: THU QUY DONG HO hoặc DO VAN AN"
+                    className="mt-1 font-mono uppercase font-semibold"
                   />
-                  <span className="text-[11px] text-slate-400 mt-1 block">
-                    Bằng chữ: {formatVND(amountPerCycle)}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-medium text-xs text-slate-700">Tên chu kỳ hiện tại</label>
-                <Input
-                  value={currentCycle}
-                  onChange={(e) => setCurrentCycle(e.target.value)}
-                  placeholder="VD: Năm 2026 hoặc Niên khóa 2025 - 2026"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Đồng bộ cho tất cả các quỹ */}
-            <div className="border-t pt-5 space-y-3">
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50/60 border border-blue-200/70">
-                <div>
-                  <span className="font-semibold text-xs text-blue-950 block">
-                    Đồng bộ thông tin ngân hàng cho toàn bộ các Quỹ hiện có ({funds.length} quỹ)
-                  </span>
-                  <span className="text-[11px] text-blue-800/80 block mt-0.5">
-                    Tất cả các quỹ thành viên sẽ cùng nhận tiền về tài khoản ngân hàng này khi quét VietQR
-                  </span>
-                </div>
-                <Switch
-                  checked={syncToAllFunds}
-                  onCheckedChange={setSyncToAllFunds}
-                />
-              </div>
-            </div>
-
-            {/* Danh sách Thủ quỹ / Ban Tài chính */}
-            <div className="border-t pt-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-blue-600" />
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-900">
-                    Thủ quỹ & Quản trị viên phân hệ Tài Chính ({financeAdmins.length})
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Được Super Admin chỉ định quyền lập phiếu thu, lập phiếu chi và quản lý các quỹ
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Khớp với tên tài khoản hiển thị trên ứng dụng ngân hàng khi người đóng quét mã QR.
                   </p>
                 </div>
+
+                {/* QR Code preview */}
+                {previewQrUrl && (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="w-28 h-28 bg-white p-2 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-center shrink-0">
+                      <img
+                        src={previewQrUrl}
+                        alt="VietQR Preview"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="space-y-1.5 text-center sm:text-left min-w-0">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 text-[10px] font-bold">
+                        <QrCode className="w-3 h-3" />
+                        <span>Xem trước mã VietQR tự động</span>
+                      </div>
+                      <div className="font-bold text-sm text-slate-900">
+                        {accountHolder || "CHỦ TÀI KHOẢN"}
+                      </div>
+                      <div className="text-xs text-slate-600 font-mono">
+                        {bankName} • {bankAccount}
+                      </div>
+                      <div className="text-xs text-emerald-600 font-semibold">
+                        Định mức: {formatVND(amountPerCycle)}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                {financeAdmins.length === 0 ? (
-                  <span className="text-xs text-slate-400 italic">
-                    Chưa chỉ định thủ quỹ riêng (Mặc định Super Admin quản lý).
-                  </span>
-                ) : (
-                  financeAdmins.map((u) => (
-                    <span
-                      key={u.id}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800"
-                    >
-                      <span>{u.fullName || u.phone}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">({u.phone})</span>
-                      {u.role === "super_admin" && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-100 text-purple-700">Super Admin</span>
-                      )}
+              {/* Chu kỳ đóng góp & Mức thu mặc định */}
+              <div className="border-t pt-5 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Calendar className="w-4 h-4 text-brand-600" />
+                  <span>Chu kỳ đóng góp & Định mức quỹ mặc định</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-medium text-xs text-slate-700">Loại chu kỳ thu quỹ</label>
+                    <Select value={cycleType} onValueChange={handleCycleTypeChange}>
+                      <SelectTrigger className="mt-1 bg-white">
+                        <SelectValue placeholder="Chọn chu kỳ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1_YEAR">Hàng năm (1 năm / lần)</SelectItem>
+                        <SelectItem value="QUARTER">Hàng quý (3 tháng / lần)</SelectItem>
+                        <SelectItem value="MONTH">Hàng tháng (1 tháng / lần)</SelectItem>
+                        <SelectItem value="EVENT">Vận động theo sự kiện</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="font-medium text-xs text-slate-700">Mức đóng mặc định (VNĐ) *</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={10000}
+                      value={amountPerCycle}
+                      onChange={(e) => setAmountPerCycle(Number(e.target.value) || 0)}
+                      placeholder="500000"
+                      className="mt-1 font-bold text-slate-900"
+                    />
+                    <span className="text-[11px] text-slate-400 mt-1 block">
+                      Bằng chữ: {formatVND(amountPerCycle)}
                     </span>
-                  ))
-                )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-medium text-xs text-slate-700">Tên chu kỳ hiện tại</label>
+                  <Input
+                    value={currentCycle}
+                    onChange={(e) => setCurrentCycle(e.target.value)}
+                    placeholder="VD: Năm 2026 hoặc Niên khóa 2025 - 2026"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Đồng bộ cho tất cả các quỹ */}
+              <div className="border-t pt-5 space-y-3">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-brand-50/60 border border-brand-200/70">
+                  <div>
+                    <span className="font-semibold text-xs text-brand-950 block">
+                      Đồng bộ thông tin ngân hàng cho toàn bộ các Quỹ hiện có ({funds.length} quỹ)
+                    </span>
+                    <span className="text-[11px] text-brand-800/80 block mt-0.5">
+                      Tất cả các quỹ thành viên sẽ cùng nhận tiền về tài khoản ngân hàng này khi quét VietQR
+                    </span>
+                  </div>
+                  <Switch
+                    checked={syncToAllFunds}
+                    onCheckedChange={setSyncToAllFunds}
+                  />
+                </div>
+              </div>
+
+              {/* Danh sách Thủ quỹ / Ban Tài chính */}
+              <div className="border-t pt-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-brand-600" />
+                  <div>
+                    <h3 className="font-semibold text-sm text-gray-900">
+                      Thủ quỹ & Quản trị viên phân hệ Tài Chính ({financeAdmins.length})
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Được Super Admin chỉ định quyền lập phiếu thu, lập phiếu chi và quản lý các quỹ
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {financeAdmins.length === 0 ? (
+                    <span className="text-xs text-slate-400 italic">
+                      Chưa chỉ định thủ quỹ riêng (Mặc định Super Admin quản lý).
+                    </span>
+                  ) : (
+                    financeAdmins.map((u) => (
+                      <span
+                        key={u.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800"
+                      >
+                        <span>{u.fullName || u.phone}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">({u.phone})</span>
+                        {u.role === "super_admin" && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-100 text-purple-700">Super Admin</span>
+                        )}
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="flex flex-col gap-2 mt-4">
-            <Button
-              type="submit"
-              disabled={saving}
-              className="w-full h-11 bg-blue-600 hover:bg-blue-700 font-semibold cursor-pointer text-white"
-            >
-              {saving ? "Đang lưu cấu hình tài chính..." : "Lưu thiết lập tài chính & Ngân quỹ"}
-            </Button>
+        {/* Sticky Bottom Bar for Save Button */}
+        {hasAccess && (
+          <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 sm:px-8 py-3.5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] shrink-0">
+            <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+              <span className="text-xs text-slate-500 hidden sm:inline-block">
+                Các thay đổi sẽ được cập nhật và đồng bộ theo thời gian thực ngay sau khi lưu.
+              </span>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="w-full sm:w-auto min-w-[160px] h-10 bg-brand-600 hover:bg-brand-700 text-white font-semibold shadow-md cursor-pointer ml-auto"
+              >
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </div>
           </div>
-        </form>
-      </main>
+        )}
+      </form>
     </div>
   );
 }

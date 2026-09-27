@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { PlusSquare, MinusSquare, Heart, Star, User } from "lucide-react";
+import { Plus, Minus, Heart, Star, User } from "lucide-react";
 import LotusIcon from "@/components/icons/LotusIcon";
 import { Input } from "@/components/ui/input";
 import type { Person, Relationship, Marriage } from "@/types";
@@ -150,7 +150,19 @@ function highlightName(name: string, search: string) {
   );
 }
 
-function PersonLabel({ person, superAdminId, search = "", isSelected = false, rowActive = false }: { person: Person; superAdminId: string | null; search?: string; isSelected?: boolean; rowActive?: boolean }) {
+function PersonLabel({
+  person,
+  superAdminId,
+  search = "",
+  isSelected = false,
+  rowActive = false,
+}: {
+  person: Person;
+  superAdminId: string | null;
+  search?: string;
+  isSelected?: boolean;
+  rowActive?: boolean;
+}) {
   const name = [person.lastName || "—", person.middleName, person.firstName].filter(Boolean).join(" ");
   const isMatch = !!search && name.toLowerCase().includes(search.toLowerCase());
   return (
@@ -175,6 +187,9 @@ function OutlineRow({
   expandedIds,
   onToggle,
   search = "",
+  depth = 0,
+  ancestorIsLast = [],
+  isLast = false,
 }: {
   node: OutlineNode;
   selectedId: string | null;
@@ -183,6 +198,9 @@ function OutlineRow({
   expandedIds: Set<string>;
   onToggle: (id: string) => void;
   search?: string;
+  depth?: number;
+  ancestorIsLast?: boolean[];
+  isLast?: boolean;
 }) {
   const hasChildren = node.children.length > 0;
   const expanded = expandedIds.has(node.person.id);
@@ -199,58 +217,141 @@ function OutlineRow({
   const rowActive = selectedId === node.person.id || node.spouses.some((s) => s.id === selectedId);
 
   const personChipClass = (pid: string) =>
-    `flex items-center gap-1.5 cursor-pointer rounded-md px-1 py-0.5 transition-colors ${
+    `flex items-center gap-1.5 cursor-pointer rounded-md px-1.5 py-0.5 transition-colors ${
       selectedId === pid ? "bg-brand-500 text-white" : "hover:bg-brand-50"
     }`;
 
   return (
-    <div data-person-id={node.person.id}>
+    <div data-person-id={node.person.id} className="relative">
       <div
-        className={`flex items-center gap-0.5 py-0.5 px-1 rounded-md transition-colors ${
+        className={`flex items-center min-h-[30px] rounded-lg transition-colors ${
           rowActive
             ? "bg-brand-50"
             : hasHiddenMatch
             ? "animate-pulse bg-yellow-100 hover:bg-yellow-50"
-            : "hover:bg-gray-100"
+            : "hover:bg-slate-50/80"
         }`}
         onDoubleClick={() => {
           onSelect(primary);
           if (hasChildren) onToggle(node.person.id);
         }}
       >
-        <button
-          onClick={() => hasChildren && onToggle(node.person.id)}
-          className={`shrink-0 w-4 h-4 flex items-center justify-center rounded transition-transform duration-200 ${
-            hasChildren
-              ? "cursor-pointer text-gray-400 hover:text-brand-600"
-              : "opacity-0 pointer-events-none"
-          }`}
-        >
-          {expanded ? <MinusSquare size={13} strokeWidth={2} /> : <PlusSquare size={13} strokeWidth={2} />}
-        </button>
+        {/* Render guide columns for depth */}
+        {Array.from({ length: depth }).map((_, colIndex) => {
+          const isImmediateConnector = colIndex === depth - 1;
+          const showAncestorLine = !isImmediateConnector && !ancestorIsLast[colIndex];
+
+          return (
+            <div
+              key={colIndex}
+              className="shrink-0 w-6 self-stretch relative flex items-center justify-center pointer-events-none"
+            >
+              {/* Vertical line through this column from an active ancestor */}
+              {showAncestorLine && (
+                <span className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[1px] bg-slate-300" />
+              )}
+
+              {/* Immediate connector column to parent */}
+              {isImmediateConnector && (
+                <>
+                  {/* Top branch: from top of row down to center (50%) */}
+                  <span className="absolute left-1/2 -translate-x-1/2 top-0 h-1/2 w-[1px] bg-slate-300" />
+
+                  {/* Bottom branch: continues down to next sibling if NOT last child */}
+                  {!isLast && (
+                    <span className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-[1px] bg-slate-300" />
+                  )}
+
+                  {/* Horizontal branch: from line center (12px) to right edge (24px) */}
+                  <span className="absolute left-1/2 top-1/2 -translate-y-1/2 right-0 h-[1px] bg-slate-300" />
+                </>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Toggle / Branch Node icon or Leaf Connector */}
+        <div className="shrink-0 w-6 self-stretch relative flex items-center justify-center">
+          {/* If node has a parent (depth > 0), line enters from the left to the center */}
+          {depth > 0 && (
+            <span className="absolute left-0 right-1/2 top-1/2 -translate-y-1/2 h-[1px] bg-slate-300 pointer-events-none" />
+          )}
+
+          {hasChildren ? (
+            <>
+              {/* If expanded, line drops out from center of button down to children */}
+              {expanded && (
+                <span className="absolute left-1/2 -translate-x-1/2 top-1/2 bottom-0 w-[1px] bg-slate-300 pointer-events-none" />
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle(node.person.id);
+                }}
+                className="z-10 w-4 h-4 flex items-center justify-center rounded bg-white text-slate-500 hover:text-brand-600 hover:border-brand-500 border border-slate-300 transition-colors cursor-pointer shadow-2xs"
+                title={expanded ? "Thu gọn" : "Mở rộng"}
+              >
+                {expanded ? (
+                  <Minus size={10} strokeWidth={2.5} />
+                ) : (
+                  <Plus size={10} strokeWidth={2.5} />
+                )}
+              </button>
+            </>
+          ) : depth > 0 ? (
+            /* Leaf node: horizontal line continues straight through towards avatar */
+            <span className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1px] bg-slate-300 pointer-events-none" />
+          ) : null}
+        </div>
+
+        {/* Primary Person Chip */}
         <div className={personChipClass(primary.id)} onClick={() => onSelect(primary)}>
           <MiniAvatar person={primary} />
-          <PersonLabel person={primary} superAdminId={superAdminId} search={search} isSelected={selectedId === primary.id} rowActive={selectedId === primary.id} />
+          <PersonLabel
+            person={primary}
+            superAdminId={superAdminId}
+            search={search}
+            isSelected={selectedId === primary.id}
+            rowActive={selectedId === primary.id}
+          />
         </div>
+
+        {/* Secondary Spouse */}
         {secondary && (
           <>
             <Heart size={9} className="text-pink-400 shrink-0 mx-1" fill="currentColor" />
             <div className={personChipClass(secondary.id)} onClick={() => onSelect(secondary)}>
               <MiniAvatar person={secondary} />
-              <PersonLabel person={secondary} superAdminId={superAdminId} search={search} isSelected={selectedId === secondary.id} rowActive={selectedId === secondary.id} />
+              <PersonLabel
+                person={secondary}
+                superAdminId={superAdminId}
+                search={search}
+                isSelected={selectedId === secondary.id}
+                rowActive={selectedId === secondary.id}
+              />
             </div>
           </>
         )}
+
+        {/* Remaining Spouses */}
         {remainingSpouses.map((spouse) => (
           <React.Fragment key={spouse.id}>
             <Heart size={9} className="text-pink-400 shrink-0 mx-1" fill="currentColor" />
             <div className={personChipClass(spouse.id)} onClick={() => onSelect(spouse)}>
               <MiniAvatar person={spouse} />
-              <PersonLabel person={spouse} superAdminId={superAdminId} search={search} isSelected={selectedId === spouse.id} rowActive={selectedId === spouse.id} />
+              <PersonLabel
+                person={spouse}
+                superAdminId={superAdminId}
+                search={search}
+                isSelected={selectedId === spouse.id}
+                rowActive={selectedId === spouse.id}
+              />
             </div>
           </React.Fragment>
         ))}
       </div>
+
+      {/* Children list */}
       {hasChildren && (
         <div
           className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${
@@ -258,8 +359,8 @@ function OutlineRow({
           }`}
         >
           <div className="overflow-hidden">
-            <div className="ml-5 border-l border-gray-200 pl-1.5 space-y-0.5">
-              {node.children.map((child) => (
+            <div>
+              {node.children.map((child, index) => (
                 <OutlineRow
                   key={child.person.id}
                   node={child}
@@ -269,6 +370,9 @@ function OutlineRow({
                   expandedIds={expandedIds}
                   onToggle={onToggle}
                   search={search}
+                  depth={depth + 1}
+                  ancestorIsLast={depth === 0 ? [] : [...ancestorIsLast, isLast]}
+                  isLast={index === node.children.length - 1}
                 />
               ))}
             </div>
@@ -317,6 +421,7 @@ export default function TreeOutline({
   const initialized = useRef<string | null | undefined>(undefined);
   const autoExpandDone = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (initialized.current !== rootPersonId && defaultIds.length > 0) {
       initialized.current = rootPersonId;
@@ -366,7 +471,7 @@ export default function TreeOutline({
       <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100 shrink-0 flex-wrap">
         <button
           onClick={expandAll}
-          className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors"
+          className="text-xs font-medium text-brand-600 hover:text-brand-800 transition-colors cursor-pointer"
         >
           Mở rộng tất cả
         </button>
@@ -374,7 +479,7 @@ export default function TreeOutline({
         <button
           onClick={expandFromSelected}
           disabled={!selectedId}
-          className="text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           Mở rộng từ người đang chọn
         </button>
@@ -382,7 +487,7 @@ export default function TreeOutline({
         <button
           onClick={() => onSetRoot?.(selectedId)}
           disabled={!selectedId || !onSetRoot}
-          className="text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="text-xs font-medium text-brand-600 hover:text-brand-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           Xem cây từ người đang chọn
         </button>
@@ -405,20 +510,23 @@ export default function TreeOutline({
           </div>
         )}
       </div>
-      <div ref={scrollContainerRef} className="flex-1 overflow-auto p-3 select-none space-y-0.5">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto p-3 select-none">
         <div className="min-w-max">
-        {forest.map((node) => (
-          <OutlineRow
-            key={node.person.id}
-            node={node}
-            selectedId={selectedId}
-            superAdminId={superAdminId}
-            onSelect={onSelect}
-            expandedIds={expandedIds}
-            onToggle={onToggle}
-            search={search}
-          />
-        ))}
+          {forest.map((node) => (
+            <OutlineRow
+              key={node.person.id}
+              node={node}
+              selectedId={selectedId}
+              superAdminId={superAdminId}
+              onSelect={onSelect}
+              expandedIds={expandedIds}
+              onToggle={onToggle}
+              search={search}
+              depth={0}
+              ancestorIsLast={[]}
+              isLast={false}
+            />
+          ))}
         </div>
       </div>
     </div>

@@ -59,8 +59,10 @@ export async function GET(req: NextRequest) {
           adminModules: adminMods,
           enabledModules: normalizeModules(m.workspace.enabledModules),
           personId: m.personId,
+          themeColor: m.workspace.themeColor || "teal",
           workspace: {
             ...m.workspace,
+            themeColor: m.workspace.themeColor || "teal",
             enabledModules: normalizeModules(m.workspace.enabledModules),
           },
         };
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
       description,
       enabled = true,
       clanLastName,
+      themeColor = "teal",
       enabledModules = DEFAULT_ENABLED_MODULES,
       creatorUserId,
     } = body;
@@ -128,6 +131,7 @@ export async function POST(req: NextRequest) {
         description: description ? description.trim() : null,
         enabled,
         clanLastName: clanLastName ? clanLastName.trim() : null,
+        themeColor: themeColor || "teal",
         enabledModules: serializedModules,
       },
     });
@@ -170,6 +174,7 @@ export async function PUT(req: NextRequest) {
       superAdminId,
       superAdminGeneration,
       enabledModules,
+      themeColor,
     } = body;
 
     if (!id) {
@@ -194,6 +199,7 @@ export async function PUT(req: NextRequest) {
     if (clanLastName !== undefined) updateData.clanLastName = clanLastName;
     if (superAdminId !== undefined) updateData.superAdminId = superAdminId;
     if (superAdminGeneration !== undefined) updateData.superAdminGeneration = superAdminGeneration;
+    if (themeColor !== undefined) updateData.themeColor = themeColor;
     if (serializedModules !== undefined) updateData.enabledModules = serializedModules;
 
     const updated = await client.workspace.update({
@@ -215,6 +221,7 @@ export async function PUT(req: NextRequest) {
           clanLastName: updated.clanLastName,
           superAdminId: updated.superAdminId,
           superAdminGeneration: updated.superAdminGeneration,
+          themeColor: updated.themeColor,
         },
       }).catch(() => {});
     }

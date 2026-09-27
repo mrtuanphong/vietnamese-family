@@ -1,6 +1,8 @@
 {
   "name": "vietnamese-family",
   "version": "0.1.0",
+  "description": "Kết Nối Cộng Đồng (Community Connection) - Nền tảng kết nối cộng đồng, quản lý phả hệ dòng họ và tổ chức",
+  "homepage": "https://ketnoicongdong.com",
   "private": true,
   "scripts": {
     "dev": "next dev",

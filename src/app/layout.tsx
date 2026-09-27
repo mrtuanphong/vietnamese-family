@@ -23,15 +23,16 @@ const geistMono = Geist_Mono({
 const titlePrefix = getTitlePrefix();
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ketnoicongdong.com"),
   title: {
-    template: `${titlePrefix}%s · Gia Đình Việt`,
-    default: `${titlePrefix}Gia Đình Việt`,
+    template: `${titlePrefix}%s · Kết Nối Cộng Đồng`,
+    default: `${titlePrefix}Kết Nối Cộng Đồng (Community Connection)`,
   },
-  description: "Ứng dụng quản lý gia phả dòng họ",
+  description: "Nền tảng kết nối cộng đồng, quản lý gia phả dòng họ và tổ chức",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: `${titlePrefix}Gia Đình Việt`,
+    title: `${titlePrefix}Kết Nối Cộng Đồng`,
   },
   other: {
     "mobile-web-app-capable": "yes",

@@ -12,6 +12,8 @@ import {
   Trash2,
   Building2,
   Link as LinkIcon,
+  Palette,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { clanApi, personsApi, usersApi, workspacesApi } from "@/lib/api";
@@ -29,6 +31,7 @@ import {
   ModuleCategory,
   DEFAULT_ENABLED_MODULES,
 } from "@/config/modules";
+import { THEME_OPTIONS, DEFAULT_THEME_ID } from "@/config/themes";
 
 type OrgForm = {
   name: string;
@@ -36,6 +39,7 @@ type OrgForm = {
   description: string | null;
   enabled: boolean;
   enabledModules: string[];
+  themeColor: string;
 };
 
 const defaultForm: OrgForm = {
@@ -44,6 +48,7 @@ const defaultForm: OrgForm = {
   description: "",
   enabled: true,
   enabledModules: DEFAULT_ENABLED_MODULES,
+  themeColor: DEFAULT_THEME_ID,
 };
 
 function fullName(p: Person | Partial<Person>) {
@@ -71,7 +76,7 @@ export default function SettingsPage() {
   const [newRole, setNewRole] = useState<UserRole>("member");
   const [creatingUser, setCreatingUser] = useState(false);
 
-  const { isSuperAdmin, role, updateEnabledModules, refreshClan, activeWorkspaceId, refreshWorkspaces } = useAccess();
+  const { isSuperAdmin, role, updateEnabledModules, refreshClan, activeWorkspaceId, refreshWorkspaces, updateThemeColor } = useAccess();
   const router = useRouter();
 
   const isSuper = isSuperAdmin || role === "super_admin";
@@ -95,12 +100,31 @@ export default function SettingsPage() {
 
       if (clan) {
         setForm({
-          name: clan.name || "Gia Đình Việt",
+          name: clan.name || "Kết Nối Cộng Đồng",
           address: clan.address ?? "",
           description: clan.description ?? "",
           enabled: clan.enabled ?? true,
           enabledModules: (clan.enabledModules as string[]) ?? DEFAULT_ENABLED_MODULES,
+          themeColor: clan.themeColor || DEFAULT_THEME_ID,
         });
+      }
+
+      if (activeWorkspaceId) {
+        try {
+          const wsList = await workspacesApi.getAll();
+          const targetWs = wsList.find((w: any) => w.id === activeWorkspaceId || w.workspaceId === activeWorkspaceId);
+          if (targetWs) {
+            setForm((prev) => ({
+              ...prev,
+              name: targetWs.name || prev.name,
+              address: targetWs.address ?? prev.address,
+              description: targetWs.description ?? prev.description,
+              enabled: targetWs.enabled ?? prev.enabled,
+              enabledModules: targetWs.enabledModules ?? prev.enabledModules,
+              themeColor: targetWs.themeColor || prev.themeColor,
+            }));
+          }
+        } catch {}
       }
       if (Array.isArray(ps)) {
         setPersons(ps);
@@ -249,9 +273,13 @@ export default function SettingsPage() {
           description: form.description,
           enabled: form.enabled,
           enabledModules: form.enabledModules,
+          themeColor: form.themeColor,
         });
       } else {
         await clanApi.upsert(form);
+      }
+      if (updateThemeColor && form.themeColor) {
+        updateThemeColor(form.themeColor);
       }
       if (updateEnabledModules && form.enabledModules) {
         updateEnabledModules(form.enabledModules);
@@ -318,7 +346,7 @@ export default function SettingsPage() {
 
             {/* Header section */}
             <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
@@ -372,11 +400,72 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Tùy chọn Theme Màu Sắc Tổ Chức */}
+              <div className="border-t pt-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-brand-600" />
+                  <div>
+                    <h3 className="font-semibold text-base text-gray-900">
+                      Giao diện & Theme Màu Sắc
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Chọn gam màu chủ đạo riêng cho tổ chức này (áp dụng đồng bộ trên menu, nút bấm, và cây gia phả)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {THEME_OPTIONS.map((t) => {
+                    const isSelected = form.themeColor === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        disabled={!isSuper}
+                        onClick={() => {
+                          setForm((prev) => ({ ...prev, themeColor: t.id }));
+                          // Live preview in DOM
+                          if (typeof document !== "undefined") {
+                            document.documentElement.setAttribute("data-theme", t.id);
+                          }
+                        }}
+                        className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                          isSelected
+                            ? "border-brand-500 bg-brand-50/50 shadow-sm ring-2 ring-brand-500/20"
+                            : "border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50"
+                        } ${!isSuper ? "opacity-70 cursor-not-allowed" : ""}`}
+                      >
+                        <span
+                          className={`w-6 h-6 rounded-full shrink-0 mt-0.5 shadow-xs flex items-center justify-center text-white ${t.swatchClass}`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-semibold text-xs text-slate-900">
+                              {t.label}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[10px] font-bold text-brand-700 bg-brand-100 px-1.5 py-0.2 rounded-full">
+                                Đang chọn
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
+                            {t.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Quản lý Tài khoản Ứng dụng (App Users) */}
               <div className="border-t pt-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-teal-600" />
+                    <Users className="w-5 h-5 text-brand-600" />
                     <div>
                       <h3 className="font-semibold text-base text-gray-900">
                         Tài khoản Ứng dụng ({users.length})
@@ -402,8 +491,8 @@ export default function SettingsPage() {
 
                 {/* Form thêm tài khoản mới */}
                 {showAddUser && isSuper && (
-                  <div className="bg-slate-50 border border-teal-200 rounded-2xl p-4 space-y-3">
-                    <h4 className="font-semibold text-sm text-teal-900">Cấp mới tài khoản truy cập</h4>
+                  <div className="bg-slate-50 border border-brand-200 rounded-2xl p-4 space-y-3">
+                    <h4 className="font-semibold text-sm text-brand-900">Cấp mới tài khoản truy cập</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium text-slate-700">Số điện thoại đăng nhập *</label>
@@ -514,7 +603,7 @@ export default function SettingsPage() {
                                   isUserSuper
                                     ? "bg-purple-50 text-purple-700 border-purple-200"
                                     : u.role === "admin"
-                                    ? "bg-teal-50 text-teal-700 border-teal-200"
+                                    ? "bg-brand-50 text-brand-700 border-brand-200"
                                     : "bg-slate-100 text-slate-600 border-slate-200"
                                 }`}
                               >
@@ -525,7 +614,7 @@ export default function SettingsPage() {
                               <span>SĐT: <strong className="text-slate-700">{u.phone}</strong></span>
                               <span>•</span>
                               {linkedPerson ? (
-                                <span className="inline-flex items-center gap-1 text-teal-700 font-medium">
+                                <span className="inline-flex items-center gap-1 text-brand-700 font-medium">
                                   <LinkIcon className="w-3 h-3" />
                                   <span>Hồ sơ: {fullName(linkedPerson)}</span>
                                 </span>
@@ -555,7 +644,7 @@ export default function SettingsPage() {
               {/* Phân quyền Quản trị viên Phân hệ (Granular RBAC) */}
               <div className="border-t pt-5 space-y-4">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-teal-600" />
+                  <ShieldCheck className="w-5 h-5 text-brand-600" />
                   <div>
                     <h3 className="font-semibold text-base text-gray-900">
                       Phân quyền Quản trị Phân hệ (Module Leads)
@@ -653,7 +742,7 @@ export default function SettingsPage() {
               <div className="border-t pt-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-teal-600" />
+                    <Layers className="w-5 h-5 text-brand-600" />
                     <div>
                       <h3 className="font-semibold text-base text-gray-900">Quản lý Bật / Tắt Modules</h3>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -707,7 +796,7 @@ export default function SettingsPage() {
                                     {m.href}
                                   </span>
                                   {isCoreSettings && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-teal-100 text-teal-800 font-medium">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-brand-100 text-brand-800 font-medium">
                                       Hệ thống cốt lõi
                                     </span>
                                   )}
@@ -769,7 +858,7 @@ export default function SettingsPage() {
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full sm:w-auto min-w-[160px] h-10 bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow-md cursor-pointer ml-auto"
+                className="w-full sm:w-auto min-w-[160px] h-10 bg-brand-600 hover:bg-brand-700 text-white font-semibold shadow-md cursor-pointer ml-auto"
               >
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import Link from "next/link";
-import { User, Heart, Users, Network, Pencil, Trash2, Cake, Flame, Info, MoreHorizontal, Loader2, ChevronLeft, ChevronRight, Star, Plus, UserPlus, ChevronDown, CalendarDays } from "lucide-react";
+import { User, Heart, Users, Network, Pencil, Trash2, Cake, Flame, Info, MoreHorizontal, Loader2, ChevronLeft, ChevronRight, Star, Plus, UserPlus, ChevronDown, CalendarDays, Search, X } from "lucide-react";
 import LotusIcon from "@/components/icons/LotusIcon";
 import { Lunar } from "lunar-javascript";
 import { useRouter } from "next/navigation";
@@ -353,7 +354,7 @@ export default function ListPageContent({
   const [persons, setPersons] = useState<Person[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [marriages, setMarriages] = useState<Marriage[]>([]);
-  const [clanName, setClanName] = useState<string>("Gia Đình Việt");
+  const [clanName, setClanName] = useState<string>("Kết Nối Cộng Đồng");
   const [superAdminId, setSuperAdminId] = useState<string | null>(null);
   const [clanLastNameSetting, setClanLastNameSetting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -370,6 +371,7 @@ export default function ListPageContent({
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const load = () =>
     Promise.all([
@@ -383,6 +385,7 @@ export default function ListPageContent({
     });
 
   useEffect(() => {
+    setMounted(true);
     Promise.all([
       load(),
       clanApi.get().then((c) => {
@@ -529,7 +532,7 @@ export default function ListPageContent({
     return (
       <div className="flex-1 bg-white flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
           <p className="text-xs sm:text-sm font-medium text-slate-500">
             Đang tải dữ liệu...
           </p>
@@ -537,6 +540,72 @@ export default function ListPageContent({
       </div>
     );
   }
+
+  const headerActionsNode =
+    mounted && activeTab === "people" && typeof document !== "undefined" && document.getElementById("header-actions")
+      ? createPortal(
+          <div className="flex items-center gap-2">
+            <div className="relative w-36 sm:w-52 md:w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Tìm theo tên..."
+                className="pl-8.5 pr-7 h-9 text-xs bg-slate-50 border-slate-200 rounded-xl focus-visible:bg-white"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {canAddMember && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 shrink-0 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs h-9 px-3 rounded-xl shadow-xs cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span className="hidden sm:inline">Thêm mới</span>
+                    <ChevronDown size={14} className="opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 z-50">
+                  <DropdownMenuItem
+                    onSelect={() => setShowAddPerson(true)}
+                    className="gap-2.5 px-3 py-2 cursor-pointer text-xs"
+                  >
+                    <UserPlus size={16} className="text-brand-600" />
+                    <span>Thêm thành viên mới</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
+                    <Users size={16} className="text-slate-400" />
+                    <span>Thêm gia đình (Sắp có)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
+                    <CalendarDays size={16} className="text-slate-400" />
+                    <span>Thêm ngày giỗ (Sắp có)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>,
+          document.getElementById("header-actions")!
+        )
+      : null;
 
   return (
     <div className="flex-1 bg-white flex overflow-hidden">
@@ -546,45 +615,7 @@ export default function ListPageContent({
         {/* ── People tab ── */}
         <TabsContent value="people">
           <>
-            <div className="flex items-center gap-2 mb-3">
-              <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Tìm theo tên..."
-                className="flex-1 min-w-0"
-              />
-              {canAddMember && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      className="gap-1.5 shrink-0 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs h-9 px-3.5 shadow-xs cursor-pointer"
-                    >
-                      <Plus size={15} />
-                      <span className="hidden sm:inline">Thêm mới</span>
-                      <ChevronDown size={14} className="opacity-70" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
-                    <DropdownMenuItem
-                      onSelect={() => setShowAddPerson(true)}
-                      className="gap-2.5 px-3 py-2 cursor-pointer text-xs"
-                    >
-                      <UserPlus size={16} className="text-teal-600" />
-                      <span>Thêm thành viên mới</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
-                      <Users size={16} className="text-slate-400" />
-                      <span>Thêm gia đình (Sắp có)</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem disabled className="gap-2.5 px-3 py-2 text-xs">
-                      <CalendarDays size={16} className="text-slate-400" />
-                      <span>Thêm ngày giỗ (Sắp có)</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+            {headerActionsNode}
 
             {generations.length > 0 ? (
               <div className="flex flex-col gap-2 mb-4">

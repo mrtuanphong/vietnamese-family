@@ -111,7 +111,7 @@ export default function HomePage() {
 
           <div>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-              {clan?.name || "Gia Đình Việt"}
+              {clan?.name || "Kết Nối Cộng Đồng"}
             </h1>
             <p className="text-sm md:text-base text-teal-100/90 max-w-xl mt-1">
               Trung tâm chỉ huy tổng thể: Quản lý gia phả dòng họ, ngân quỹ hội nhóm và kết nối các thế hệ.

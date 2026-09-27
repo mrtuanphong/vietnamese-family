@@ -1,6 +1,6 @@
 # LỘ TRÌNH PHÁT TRIỂN & THEO DÕI CÔNG VIỆC (ROADMAP & TODO)
 
-Dự án: **Quản lý Dòng họ & Gia phả Số (Vietnamese Family)**  
+Dự án: **Kết Nối Cộng Đồng - Community Connection (`vietnamese-family`)**  
 Cập nhật lần cuối: 25/09/2026
 
 ---

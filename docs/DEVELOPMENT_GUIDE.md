@@ -1,4 +1,4 @@
-# Hướng Dẫn Vận Hành & Kiến Trúc Dự Án (Gia Đình Việt)
+# Hướng Dẫn Vận Hành & Kiến Trúc Dự Án (Kết Nối Cộng Đồng - Community Connection)
 
 Tài liệu này dành cho thành viên mới tham gia dự án hoặc dùng để tra cứu khi thiết lập lại môi trường làm việc trên máy tính mới.
 
@@ -6,7 +6,9 @@ Tài liệu này dành cho thành viên mới tham gia dự án hoặc dùng đ�
 
 ## 1. Tổng Quan Kiến Trúc & Công Nghệ
 
-- **Tên dự án:** Gia Đình Việt (`vietnamese-family`)
+- **Tên dự án:** Kết Nối Cộng Đồng (Community Connection) - Mã nguồn: `vietnamese-family`
+- **Tên miền chính thức:** [ketnoicongdong.com](https://ketnoicongdong.com) *(available - tạm thời song song: [do.lifeofphong.com](https://do.lifeofphong.com))*
+- **Ngôn ngữ hệ thống:** Chủ yếu sử dụng Tiếng Việt (Tiếng Anh: Community Connection)
 - **Mã nguồn:** [GitHub Repository](https://github.com/mrtuanphong/vietnamese-family)
 - **Framework chính:** Next.js 16 (App Router), React 19, TypeScript
 - **Giao diện & Thành phần UI:** Tailwind CSS v4, shadcn/ui, Lucide Icons
@@ -23,10 +25,10 @@ Dự án tách biệt hoàn toàn giữa môi trường phát triển thử nghi
 
 | Tiêu chí | Môi trường Development (Dev / Staging) | Môi trường Production (Chính thức) |
 |---|---|---|
-| **Mục đích** | Phát triển, kiểm thử tính năng mới, thử nghiệm dữ liệu | Người thân, dòng họ truy cập và tra cứu chính thức |
+| **Mục đích** | Phát triển, kiểm thử tính năng mới, thử nghiệm dữ liệu | Cộng đồng, dòng họ truy cập và tra cứu chính thức |
 | **Nhánh Git (GitHub)** | `dev` | `main` |
 | **Dự án trên Vercel** | `vietnamese-family-dev` | `vietnamese-family-prod` |
-| **Đường dẫn Website** | [vietnamese-family-dev.vercel.app](https://vietnamese-family-dev.vercel.app) | [do.lifeofphong.com](https://do.lifeofphong.com) |
+| **Đường dẫn Website** | [vietnamese-family-dev.vercel.app](https://vietnamese-family-dev.vercel.app) | [ketnoicongdong.com](https://ketnoicongdong.com) (hoặc [do.lifeofphong.com](https://do.lifeofphong.com)) |
 | **Nhánh CSDL trên Neon** | Branch `dev` | Branch `production` (hoặc `main`) |
 | **Dấu hiệu nhận biết UI** | Có tiền tố **`[Dev]`** trên tab trình duyệt và tiêu đề trang | Giao diện chuẩn sạch sẽ, không có nhãn `[Dev]` |
 | **Giá trị biến `DB_ENV`** | `dev` | `production` |
@@ -125,7 +127,7 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
        │  git merge dev -> main
        ▼
 [GitHub (nhánh main)] ───── auto deploy ────► [Vercel: vietnamese-family-prod]
-                                             (do.lifeofphong.com)
+                                             (ketnoicongdong.com / do.lifeofphong.com)
 ```
 
 ### Quy trình 3 bước chuẩn:
@@ -145,7 +147,7 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
    - Vercel tự động build trong ~1 phút. Truy cập [vietnamese-family-dev.vercel.app](https://vietnamese-family-dev.vercel.app) để kiểm tra giao diện và hoạt động thực tế trên cloud.
 
 3. **Phát hành lên Production (Trang chính thức):**
-   - Khi tính năng trên Dev đã ổn định và sẵn sàng cho gia đình sử dụng:
+   - Khi tính năng trên Dev đã ổn định và sẵn sàng cho cộng đồng sử dụng:
      ```bash
      git checkout main
      git pull origin main
@@ -154,7 +156,7 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
      git checkout dev
      ```
    - Hoặc tạo **Pull Request** từ `dev` vào `main` trên giao diện [GitHub](https://github.com/mrtuanphong/vietnamese-family).
-   - Vercel dự án `vietnamese-family-prod` sẽ tự động chạy migration và cập nhật trực tiếp lên [do.lifeofphong.com](https://do.lifeofphong.com).
+   - Vercel dự án `vietnamese-family-prod` sẽ tự động chạy migration và cập nhật trực tiếp lên [ketnoicongdong.com](https://ketnoicongdong.com) *(hoặc [do.lifeofphong.com](https://do.lifeofphong.com))*.
 
 ---
 
@@ -164,4 +166,4 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
 - **Quản lý máy chủ & triển khai:** [Vercel Dashboard](https://vercel.com)
 - **Quản lý CSDL Serverless:** [Neon Console](https://console.neon.tech)
 - **Trang web Dev (Thử nghiệm):** [vietnamese-family-dev.vercel.app](https://vietnamese-family-dev.vercel.app)
-- **Trang web Prod (Chính thức):** [do.lifeofphong.com](https://do.lifeofphong.com)
+- **Trang web Prod (Chính thức):** [ketnoicongdong.com](https://ketnoicongdong.com) *(hoặc [do.lifeofphong.com](https://do.lifeofphong.com))*

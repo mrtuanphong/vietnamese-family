@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Gia Đình Việt",
-    short_name: "Gia Đình Việt",
-    description: "Ứng dụng quản lý gia phả dòng họ",
+    name: "Kết Nối Cộng Đồng (Community Connection)",
+    short_name: "Kết Nối Cộng Đồng",
+    description: "Nền tảng kết nối cộng đồng, quản lý phả hệ dòng họ và tổ chức",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

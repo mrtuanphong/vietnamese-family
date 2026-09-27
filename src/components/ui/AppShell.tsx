@@ -12,6 +12,7 @@ import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { UserRole, UserWorkspaceSummary, WorkspaceType } from "@/types";
 import { DEFAULT_ENABLED_MODULES, SYSTEM_MODULES, isModuleEnabled } from "@/config/modules";
+import { DEFAULT_THEME_ID } from "@/config/themes";
 
 const LIST_ROUTES = ["/members", "/events", "/families"];
 
@@ -19,7 +20,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [clanName, setClanName] = useState("Gia Đình Việt");
+  const [clanName, setClanName] = useState("Kết Nối Cộng Đồng");
+  const [themeColor, setThemeColor] = useState<string>(DEFAULT_THEME_ID);
   const [enabledModules, setEnabledModules] = useState<string[]>(DEFAULT_ENABLED_MODULES);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [accessGranted, setAccessGranted] = useState(false);
@@ -41,10 +43,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setEnabledModules(modules);
   }, []);
 
+  const updateThemeColor = useCallback((color: string) => {
+    setThemeColor(color);
+    sessionStorage.setItem("giapha_theme_color", color);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", color);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", themeColor);
+    }
+  }, [themeColor]);
+
   const refreshClan = useCallback(async () => {
     try {
       const c = await clanApi.get();
       if (c?.name) setClanName(c.name);
+      if (c?.themeColor) {
+        setThemeColor(c.themeColor);
+        sessionStorage.setItem("giapha_theme_color", c.themeColor);
+      }
       if (c?.enabledModules && Array.isArray(c.enabledModules)) {
         setEnabledModules(c.enabledModules);
       }
@@ -66,9 +86,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         sessionStorage.setItem("giapha_admin_modules", JSON.stringify(target.adminModules || []));
         sessionStorage.setItem("giapha_person_id", target.personId || "");
         sessionStorage.setItem("giapha_clan_name", target.workspaceName);
+        const targetTheme = target.themeColor || "teal";
+        sessionStorage.setItem("giapha_theme_color", targetTheme);
 
         setActiveWorkspaceId(targetWorkspaceId);
         setClanName(target.workspaceName);
+        setThemeColor(targetTheme);
         setRole(target.role);
         setIsSuperAdmin(isSuper);
         setAdminModules(target.adminModules || []);
@@ -122,6 +145,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [userId]);
 
+  const updateCurrentUser = useCallback(
+    (data: { name?: string; phone?: string; personId?: string; avatarUrl?: string }) => {
+      if (data.name !== undefined) {
+        setLoggedInName(data.name);
+        sessionStorage.setItem("giapha_name", data.name);
+      }
+      if (data.phone !== undefined) {
+        setPhone(data.phone);
+        sessionStorage.setItem("giapha_phone", data.phone);
+      }
+      if (data.personId !== undefined) {
+        setPersonId(data.personId);
+        sessionStorage.setItem("giapha_person_id", data.personId);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
@@ -140,10 +181,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const storedActiveWsId = sessionStorage.getItem("giapha_active_workspace_id");
       const storedWorkspaces = sessionStorage.getItem("giapha_workspaces");
       const storedClanName = sessionStorage.getItem("giapha_clan_name");
+      const storedTheme = sessionStorage.getItem("giapha_theme_color");
 
       if (storedUserId) setUserId(storedUserId);
       if (storedActiveWsId) setActiveWorkspaceId(storedActiveWsId);
       if (storedClanName) setClanName(storedClanName);
+      if (storedTheme) setThemeColor(storedTheme);
       if (storedWorkspaces) {
         try {
           setWorkspaces(JSON.parse(storedWorkspaces));
@@ -183,12 +226,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             setActiveWorkspaceId(current.workspaceId);
             setClanName(current.workspaceName);
             if (current.enabledModules) setEnabledModules(current.enabledModules);
+            if (current.themeColor) {
+              setThemeColor(current.themeColor);
+              sessionStorage.setItem("giapha_theme_color", current.themeColor);
+            }
           }
         }
       }).catch(() => {});
     } else {
       clanApi.get().then((c) => {
         if (c?.name) setClanName(c.name);
+        if (c?.themeColor) {
+          setThemeColor(c.themeColor);
+          sessionStorage.setItem("giapha_theme_color", c.themeColor);
+        }
         if (c?.enabledModules && Array.isArray(c.enabledModules)) {
           setEnabledModules(c.enabledModules);
         }
@@ -199,6 +250,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const updated = e?.detail;
       if (updated) {
         if (updated.name) setClanName(updated.name);
+        if (updated.themeColor) {
+          setThemeColor(updated.themeColor);
+          sessionStorage.setItem("giapha_theme_color", updated.themeColor);
+        }
         if (updated.enabledModules && Array.isArray(updated.enabledModules)) {
           setEnabledModules(updated.enabledModules);
         }
@@ -290,8 +345,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const rawPageTitle = (() => {
     if (pathname === "/") return "Tổng quan hệ thống";
+    if (pathname.startsWith("/profile")) return "Hồ sơ cá nhân";
     if (pathname.startsWith("/tree")) return "Cây gia phả";
-    if (pathname.startsWith("/members")) return "Danh bạ thành viên";
+    if (pathname.startsWith("/members")) return "Thành viên dòng họ";
     if (pathname.startsWith("/events")) return "Lịch giỗ & Sự kiện";
     if (pathname.startsWith("/families")) return "Hộ gia đình";
     if (pathname.startsWith("/community/settings")) return "Thiết lập dòng họ & Gia tộc";
@@ -326,6 +382,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem("giapha_active_workspace_id");
     sessionStorage.removeItem("giapha_workspaces");
     sessionStorage.removeItem("giapha_clan_name");
+    sessionStorage.removeItem("giapha_theme_color");
+    setThemeColor(DEFAULT_THEME_ID);
     setAccessGranted(false);
     setLoggedInName("");
     setRole(null);
@@ -361,6 +419,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       canDeletePerson,
       enabledModules,
       clanName,
+      themeColor,
+      updateThemeColor,
       updateEnabledModules,
       refreshClan,
       activeWorkspaceId,
@@ -368,6 +428,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       switchWorkspace,
       createWorkspace,
       refreshWorkspaces,
+      updateCurrentUser,
     }),
     [
       userId,
@@ -389,6 +450,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       canDeletePerson,
       enabledModules,
       clanName,
+      themeColor,
+      updateThemeColor,
       updateEnabledModules,
       refreshClan,
       activeWorkspaceId,
@@ -396,6 +459,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       switchWorkspace,
       createWorkspace,
       refreshWorkspaces,
+      updateCurrentUser,
     ]
   );
 
@@ -435,6 +499,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             sessionStorage.setItem("giapha_clan_name", authData.clanName);
             setClanName(authData.clanName);
           }
+          if (authData.themeColor) {
+            sessionStorage.setItem("giapha_theme_color", authData.themeColor);
+            setThemeColor(authData.themeColor);
+          }
           if (authData.enabledModules && authData.enabledModules.length > 0) {
             setEnabledModules(authData.enabledModules);
           }
@@ -463,7 +531,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AccessContext.Provider value={accessContextValue}>
-      <div className="h-screen h-dvh w-full flex flex-col md:flex-row overflow-hidden bg-slate-100/60 text-slate-900">
+      <div data-theme={themeColor} className="h-screen h-dvh w-full flex flex-col md:flex-row overflow-hidden bg-slate-100/60 text-slate-900">
         {/* Sidebar on Desktop / Tablet (>= 768px) */}
         <Sidebar
           clanName={clanName}

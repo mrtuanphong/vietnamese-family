@@ -18,7 +18,7 @@ interface BottomNavProps {
   onOpenAccount?: () => void;
 }
 
-export function BottomNav({ enabledModules, onOpenAccount }: BottomNavProps) {
+export function BottomNav({ enabledModules }: BottomNavProps) {
   const pathname = usePathname();
 
   const navItems = [
@@ -62,12 +62,11 @@ export function BottomNav({ enabledModules, onOpenAccount }: BottomNavProps) {
       show: isModuleEnabled("events", enabledModules),
     },
     {
-      id: "account",
-      name: "Cài đặt",
-      href: "/settings",
+      id: "profile",
+      name: "Tài khoản",
+      href: "/profile",
       icon: UserCircle2,
-      isActive: (p: string) => p.startsWith("/settings") || p.startsWith("/about") || p.startsWith("/clan"),
-      onClick: onOpenAccount,
+      isActive: (p: string) => p.startsWith("/profile") || p.startsWith("/settings") || p.startsWith("/clan"),
     },
   ];
 
@@ -80,32 +79,15 @@ export function BottomNav({ enabledModules, onOpenAccount }: BottomNavProps) {
           const active = item.isActive(pathname);
           const Icon = item.icon;
 
-          if (item.onClick) {
-            return (
-              <button
-                key={item.id}
-                onClick={item.onClick}
-                className={`flex flex-col items-center justify-center w-full h-full py-1 transition-all ${
-                  active ? "text-teal-600 font-semibold" : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <div className={`p-1 rounded-xl transition-all ${active ? "bg-teal-50" : ""}`}>
-                  <Icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
-                </div>
-                <span className="text-[10px] mt-0.5 tracking-tight font-medium">{item.name}</span>
-              </button>
-            );
-          }
-
           return (
             <Link
               key={item.id}
               href={item.href}
               className={`flex flex-col items-center justify-center w-full h-full py-1 transition-all ${
-                active ? "text-teal-600 font-semibold" : "text-slate-500 hover:text-slate-800"
+                active ? "text-brand-600 font-semibold" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <div className={`p-1 rounded-xl transition-all ${active ? "bg-teal-50" : ""}`}>
+              <div className={`p-1 rounded-xl transition-all ${active ? "bg-brand-50" : ""}`}>
                 <Icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : "stroke-[1.75]"}`} />
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight font-medium">{item.name}</span>

@@ -11,6 +11,7 @@ export interface Workspace {
   clanLastName?: string | null;
   superAdminId?: string | null;
   superAdminGeneration?: number | null;
+  themeColor?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -36,6 +37,7 @@ export interface UserWorkspaceSummary {
   adminModules: string[];
   enabledModules: string[];
   personId?: string | null;
+  themeColor?: string | null;
 }
 
 export interface Clan {
@@ -48,6 +50,7 @@ export interface Clan {
   superAdminGeneration?: number | null;
   clanLastName?: string | null;
   enabledModules?: string[] | null;
+  themeColor?: string | null;
 }
 
 export type Gender = "male" | "female" | "unknown";
@@ -64,6 +67,7 @@ export interface AppUser {
   adminModules?: string[] | null;
   personId?: string | null;
   person?: Partial<Person> | null;
+  memberships?: WorkspaceMember[];
   createdAt?: string;
   updatedAt?: string;
 }

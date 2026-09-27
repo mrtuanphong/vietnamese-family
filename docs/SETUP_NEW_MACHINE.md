@@ -1,6 +1,6 @@
 # Hướng Dẫn Thiết Lập Dự Án Trên Máy Tính Mới
 
-Tài liệu này hướng dẫn chi tiết từng bước để thiết lập môi trường và bắt đầu làm việc với dự án **Gia Đình Việt (`vietnamese-family`)** khi bạn chuyển sang máy tính mới hoặc cài đặt lại hệ điều hành.
+Tài liệu này hướng dẫn chi tiết từng bước để thiết lập môi trường và bắt đầu làm việc với dự án **Kết Nối Cộng Đồng - Community Connection (`vietnamese-family`)** khi bạn chuyển sang máy tính mới hoặc cài đặt lại hệ điều hành.
 
 ---
 

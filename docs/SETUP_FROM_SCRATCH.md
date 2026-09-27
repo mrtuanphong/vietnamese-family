@@ -1,10 +1,10 @@
-# Hướng Dẫn Thiết Lập Dự Án Từ Đầu (Setup From Scratch)
+# Hướng Dẫn Thiết Lập Dự Án Từ Đầu (Setup From Scratch) - Kết Nối Cộng Đồng (Community Connection)
 
 Tài liệu này hướng dẫn chi tiết cách dựng toàn bộ hệ thống gồm 2 môi trường: **Development** (Thử nghiệm) và **Production** (Chính thức) khi bắt đầu với mã nguồn từ GitHub.
 
 ```
 GitHub Repo (vietnamese-family)
-├── Nhánh main ────────► Vercel (vietnamese-family-prod) ──► Neon (CSDL Prod) ──► do.lifeofphong.com
+├── Nhánh main ────────► Vercel (vietnamese-family-prod) ──► Neon (CSDL Prod) ──► ketnoicongdong.com (hoặc do.lifeofphong.com)
 └── Nhánh dev  ────────► Vercel (vietnamese-family-dev)  ──► Neon (CSDL Dev)  ──► vietnamese-family-dev.vercel.app
        ▲
        └── git push từ máy cá nhân (Local dev)
@@ -109,7 +109,7 @@ Mở [Vercel Dashboard](https://vercel.com) và đăng nhập bằng tài khoả
 5. Bấm **Deploy**.
 6. **Gán Tên Miền Chính Thức (Custom Domain):**
    - Sau khi deploy xong, vào **Settings** > **Domains**.
-   - Thêm tên miền chính thức của bạn (ví dụ: `do.lifeofphong.com`).
+   - Thêm tên miền chính thức của bạn (ví dụ: `ketnoicongdong.com` hoặc `do.lifeofphong.com`).
    - Cấu hình bản ghi DNS theo hướng dẫn của Vercel tại nhà cung cấp tên miền của bạn.
 
 ---
@@ -149,7 +149,7 @@ Mặc định khi bạn push lên nhánh `dev`, dự án Prod cũng sẽ tự t�
 | STT | Hạng mục kiểm tra | Cách thực hiện | Tiêu chuẩn đạt |
 |:---:|---|---|---|
 | 1 | Nhận diện môi trường Dev | Truy cập `vietnamese-family-dev.vercel.app` | Tiêu đề trang và tab trình duyệt có chữ **`[Dev]`** |
-| 2 | Nhận diện môi trường Prod | Truy cập `do.lifeofphong.com` | Tiêu đề trang sạch sẽ, **không** có tiền tố `[Dev]` |
+| 2 | Nhận diện môi trường Prod | Truy cập `ketnoicongdong.com` (hoặc `do.lifeofphong.com`) | Tiêu đề trang sạch sẽ, **không** có tiền tố `[Dev]` |
 | 3 | Kiểm tra Endpoint CSDL | Vào trang `/about` > tab "Hệ thống & CSDL" trên cả 2 web | Mã Endpoint trên mỗi trang khớp đúng với nhánh tương ứng trên Neon |
 | 4 | Kiểm tra cô lập dữ liệu | Thêm 1 người tên "Test Dev" trên web Dev | Sang trang Prod tải lại (F5), người "Test Dev" **không** xuất hiện |
 | 5 | Chạy local trên máy cá nhân | Mở Terminal chạy `npm run dev` | Truy cập `http://localhost:3000` thấy tiền tố `[Dev]` |

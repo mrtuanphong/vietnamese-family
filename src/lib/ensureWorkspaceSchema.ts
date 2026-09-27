@@ -18,6 +18,7 @@ export async function ensureWorkspaceSchema(): Promise<string> {
         "clanLastName" TEXT,
         "superAdminId" TEXT,
         "superAdminGeneration" INTEGER,
+        "themeColor" TEXT DEFAULT 'teal',
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -89,6 +90,32 @@ export async function ensureWorkspaceSchema(): Promise<string> {
           WHERE table_name = 'Fund' AND column_name = 'workspaceId'
         ) THEN
           ALTER TABLE "Fund" ADD COLUMN "workspaceId" TEXT;
+        END IF;
+      END $$;
+    `);
+
+    // 6b. Add themeColor column to Workspace table if not exists
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'Workspace' AND column_name = 'themeColor'
+        ) THEN
+          ALTER TABLE "Workspace" ADD COLUMN "themeColor" TEXT DEFAULT 'teal';
+        END IF;
+      END $$;
+    `);
+
+    // 6c. Add themeColor column to Clan table if not exists
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'Clan' AND column_name = 'themeColor'
+        ) THEN
+          ALTER TABLE "Clan" ADD COLUMN "themeColor" TEXT DEFAULT 'teal';
         END IF;
       END $$;
     `);

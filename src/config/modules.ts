@@ -25,7 +25,7 @@ export const CATEGORIES: Record<ModuleCategory, CategoryMeta> = {
   community: {
     id: "community",
     name: "Cộng Đồng & Gia Tộc",
-    description: "Phả hệ, cây gia phả, danh bạ thành viên, lịch giỗ và thiết lập tộc",
+    description: "Phả hệ, cây gia phả, thành viên dòng họ, lịch giỗ và thiết lập tộc",
     badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
     iconName: "Users",
   },
@@ -66,7 +66,7 @@ export const SYSTEM_MODULES: ModuleDefinition[] = [
   },
   {
     id: "members",
-    name: "Danh Bạ Thành Viên",
+    name: "Thành viên dòng họ",
     description: "Tra cứu lý lịch, số điện thoại, vai vế và thế hệ từng người",
     category: "community",
     href: "/members",

@@ -22,6 +22,7 @@ interface LoginGateProps {
     workspaces?: UserWorkspaceSummary[];
     activeWorkspaceId?: string;
     clanName?: string;
+    themeColor?: string;
     enabledModules?: string[];
   }) => void;
 }
@@ -66,6 +67,7 @@ export default function LoginGate({ clanName, onGranted }: LoginGateProps) {
           workspaces: data.workspaces ?? [],
           activeWorkspaceId: data.activeWorkspaceId ?? "",
           clanName: data.clanName ?? clanName,
+          themeColor: data.themeColor,
           enabledModules: data.enabledModules,
         });
       } else {

@@ -90,7 +90,7 @@ export function Sidebar({
 
   const getRoleBadge = () => {
     if (isSuperAdmin || role === "super_admin") {
-      return { label: "Super Admin", color: "bg-teal-100 text-teal-800 border-teal-200" };
+      return { label: "Super Admin", color: "bg-brand-100 text-brand-800 border-brand-200" };
     }
     if (adminModules && adminModules.length > 0) {
       if (adminModules.includes("community") && adminModules.includes("finance")) {
@@ -133,12 +133,12 @@ export function Sidebar({
           {/* Brand Header */}
           <div className="flex items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg font-bold shadow-xs shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center text-lg font-bold shadow-xs shrink-0">
                 🏛️
               </div>
               <div className="overflow-hidden min-w-0">
                 <h1 className="font-bold text-slate-900 text-sm tracking-tight leading-tight truncate">
-                  {clanName || "Gia Đình Việt"}
+                  {clanName || "Kết Nối Cộng Đồng"}
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium truncate">
                   {isModuleEnabled("tree", enabledModules) || isModuleEnabled("clan_settings", enabledModules)
@@ -169,7 +169,7 @@ export function Sidebar({
               href="/"
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                 pathname === "/"
-                  ? "bg-teal-600 text-white shadow-md shadow-teal-600/20"
+                  ? "bg-brand-600 text-white shadow-md shadow-brand-600/20"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
@@ -202,7 +202,7 @@ export function Sidebar({
                         href={m.href}
                         className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                           isActive
-                            ? "bg-teal-600 text-white shadow-md shadow-teal-600/20"
+                            ? "bg-brand-600 text-white shadow-md shadow-brand-600/20"
                             : "text-slate-600 hover:bg-slate-100/90 hover:text-slate-900"
                         }`}
                       >
@@ -266,15 +266,26 @@ export function Sidebar({
         {/* 3. User profile & Logout (Pinned at Bottom, Never Scrolls) */}
         <div className="p-4 pt-3 border-t border-slate-200 space-y-2 shrink-0 bg-white">
           {userName && (
-            <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-              <div className="overflow-hidden min-w-0">
-                <div className="text-xs font-bold text-slate-800 truncate">{userName}</div>
-                {phone && <div className="text-[10px] text-slate-400 truncate">{phone}</div>}
+            <Link
+              href="/profile"
+              className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-brand-50/80 border border-slate-200/80 hover:border-brand-300 transition-all group cursor-pointer"
+              title="Xem và chỉnh sửa thông tin cá nhân"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden min-w-0">
+                  <div className="text-xs font-bold text-slate-800 group-hover:text-brand-700 truncate transition-colors">
+                    {userName}
+                  </div>
+                  {phone && <div className="text-[10px] text-slate-400 truncate">{phone}</div>}
+                </div>
               </div>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${badge.color}`}>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${badge.color} shrink-0`}>
                 {badge.label}
               </span>
-            </div>
+            </Link>
           )}
 
           {onLogout && (

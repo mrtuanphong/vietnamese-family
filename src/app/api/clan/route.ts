@@ -37,7 +37,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, address, description, enabled, superAdminId, superAdminGeneration, clanLastName, enabledModules } = body;
+    const { name, address, description, enabled, superAdminId, superAdminGeneration, clanLastName, enabledModules, themeColor } = body;
 
     let serializedModules: string | undefined = undefined;
     if (Array.isArray(enabledModules)) {
@@ -49,13 +49,14 @@ export async function POST(req: NextRequest) {
     }
 
     const data = {
-      name: name || "Gia Đình Việt",
+      name: name || "Kết Nối Cộng Đồng",
       address,
       description,
       enabled: enabled ?? true,
       superAdminId,
       superAdminGeneration,
       clanLastName,
+      ...(themeColor !== undefined ? { themeColor } : {}),
       ...(serializedModules !== undefined ? { enabledModules: serializedModules } : {}),
     };
 
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, address, description, enabled, superAdminId, superAdminGeneration, clanLastName, enabledModules } = body;
+    const { name, address, description, enabled, superAdminId, superAdminGeneration, clanLastName, enabledModules, themeColor } = body;
 
     let serializedModules: string | undefined = undefined;
     if (Array.isArray(enabledModules)) {
@@ -84,13 +85,14 @@ export async function PUT(req: NextRequest) {
     }
 
     const data = {
-      name: name || "Gia Đình Việt",
+      name: name || "Kết Nối Cộng Đồng",
       address,
       description,
       enabled: enabled ?? true,
       superAdminId,
       superAdminGeneration,
       clanLastName,
+      ...(themeColor !== undefined ? { themeColor } : {}),
       ...(serializedModules !== undefined ? { enabledModules: serializedModules } : {}),
     };
 
